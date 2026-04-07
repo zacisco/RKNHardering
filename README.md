@@ -209,3 +209,9 @@ Bypass — наиболее сильный сигнал, перекрывает 
 ```bash
 ./gradlew assembleDebug
 ```
+
+---
+
+## Благодарности
+
+[runetfreedom](https://github.com/runetfreedom) — за [per-app-split-bypass-poc](https://github.com/runetfreedom/per-app-split-bypass-poc), на основе которого реализована детекция per-app split bypass.
