@@ -1,9 +1,13 @@
 package com.notcvnt.rknhardering
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Typeface
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
@@ -11,7 +15,10 @@ import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -19,6 +26,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
+import com.notcvnt.rknhardering.checker.BypassChecker
 import com.notcvnt.rknhardering.checker.VpnCheckRunner
 import com.notcvnt.rknhardering.model.BypassResult
 import com.notcvnt.rknhardering.model.CategoryResult
@@ -32,22 +40,27 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var btnRunCheck: MaterialButton
     private lateinit var btnStopCheck: MaterialButton
+    private lateinit var btnReRequestPermissions: MaterialButton
     private lateinit var linkGithub: TextView
     private var checkJob: Job? = null
     private lateinit var progressBar: ProgressBar
     private lateinit var cardGeoIp: MaterialCardView
     private lateinit var cardDirect: MaterialCardView
     private lateinit var cardIndirect: MaterialCardView
+    private lateinit var cardLocation: MaterialCardView
     private lateinit var cardVerdict: MaterialCardView
     private lateinit var iconGeoIp: ImageView
     private lateinit var iconDirect: ImageView
     private lateinit var iconIndirect: ImageView
+    private lateinit var iconLocation: ImageView
     private lateinit var statusGeoIp: TextView
     private lateinit var statusDirect: TextView
     private lateinit var statusIndirect: TextView
+    private lateinit var statusLocation: TextView
     private lateinit var findingsGeoIp: LinearLayout
     private lateinit var findingsDirect: LinearLayout
     private lateinit var findingsIndirect: LinearLayout
+    private lateinit var findingsLocation: LinearLayout
     private lateinit var cardBypass: MaterialCardView
     private lateinit var iconBypass: ImageView
     private lateinit var statusBypass: TextView
@@ -55,6 +68,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var findingsBypass: LinearLayout
     private lateinit var iconVerdict: ImageView
     private lateinit var textVerdict: TextView
+
+    private val prefs by lazy { getSharedPreferences("rknhardering_prefs", MODE_PRIVATE) }
+
+    private val permissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions(),
+    ) { result ->
+        markPermissionsRequested(result.keys)
+        prefs.edit().putBoolean(PREF_RATIONALE_SHOWN, true).apply()
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,35 +90,39 @@ class MainActivity : AppCompatActivity() {
 
         bindViews()
 
-        linkGithub.setOnClickListener {
-            openGithubRepo()
-        }
-        btnRunCheck.setOnClickListener {
-            runCheck()
-        }
-        btnStopCheck.setOnClickListener {
-            checkJob?.cancel()
+        linkGithub.setOnClickListener { openGithubRepo() }
+        btnRunCheck.setOnClickListener { onRunCheckClicked() }
+        btnStopCheck.setOnClickListener { checkJob?.cancel() }
+        btnReRequestPermissions.setOnClickListener { reRequestPermissions() }
+
+        if (!prefs.getBoolean(PREF_RATIONALE_SHOWN, false)) {
+            showPermissionRationale()
         }
     }
 
     private fun bindViews() {
         btnRunCheck = findViewById(R.id.btnRunCheck)
         btnStopCheck = findViewById(R.id.btnStopCheck)
+        btnReRequestPermissions = findViewById(R.id.btnReRequestPermissions)
         linkGithub = findViewById(R.id.linkGithub)
         progressBar = findViewById(R.id.progressBar)
         cardGeoIp = findViewById(R.id.cardGeoIp)
         cardDirect = findViewById(R.id.cardDirect)
         cardIndirect = findViewById(R.id.cardIndirect)
+        cardLocation = findViewById(R.id.cardLocation)
         cardVerdict = findViewById(R.id.cardVerdict)
         iconGeoIp = findViewById(R.id.iconGeoIp)
         iconDirect = findViewById(R.id.iconDirect)
         iconIndirect = findViewById(R.id.iconIndirect)
+        iconLocation = findViewById(R.id.iconLocation)
         statusGeoIp = findViewById(R.id.statusGeoIp)
         statusDirect = findViewById(R.id.statusDirect)
         statusIndirect = findViewById(R.id.statusIndirect)
+        statusLocation = findViewById(R.id.statusLocation)
         findingsGeoIp = findViewById(R.id.findingsGeoIp)
         findingsDirect = findViewById(R.id.findingsDirect)
         findingsIndirect = findViewById(R.id.findingsIndirect)
+        findingsLocation = findViewById(R.id.findingsLocation)
         cardBypass = findViewById(R.id.cardBypass)
         iconBypass = findViewById(R.id.iconBypass)
         statusBypass = findViewById(R.id.statusBypass)
@@ -110,13 +136,106 @@ class MainActivity : AppCompatActivity() {
         startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.github_repo_url))))
     }
 
+    private fun requiredPermissions(): Array<String> {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            arrayOf(Manifest.permission.READ_PHONE_STATE, Manifest.permission.NEARBY_WIFI_DEVICES)
+        } else {
+            arrayOf(Manifest.permission.READ_PHONE_STATE, Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+
+    private fun showPermissionRationale(permissions: Array<String> = requiredPermissions()) {
+        AlertDialog.Builder(this)
+            .setTitle("Дополнительные разрешения")
+            .setMessage(
+                "Для повышения точности проверки приложению нужны дополнительные разрешения:\n\n" +
+                    "\u2022 Состояние телефона \u2014 определяет страну сотового оператора для сравнения " +
+                    "с IP-геолокацией. Например, Госуслуги запрашивает это разрешение для " +
+                    "верификации региона при входе.\n\n" +
+                    "\u2022 Местоположение \u2014 считывает идентификатор Wi-Fi точки доступа (BSSID) " +
+                    "для уточнения местоположения. Например, 2ГИС запрашивает это разрешение " +
+                    "для построения маршрута.\n\n" +
+                    "Без этих разрешений проверка будет работать, но с меньшей точностью.",
+            )
+            .setPositiveButton("Разрешить") { _, _ ->
+                launchPermissionRequest(permissions)
+            }
+            .setNegativeButton("Пропустить") { _, _ ->
+                prefs.edit().putBoolean(PREF_RATIONALE_SHOWN, true).apply()
+            }
+            .setCancelable(false)
+            .show()
+    }
+
+    private fun reRequestPermissions() {
+        val missingPermissions = requiredPermissions().filter {
+            ContextCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
+        }
+        if (missingPermissions.isEmpty()) {
+            Toast.makeText(this, "Все разрешения уже выданы", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val action = PermissionRequestPlanner.decideAction(
+            missingPermissions.map { permission ->
+                PermissionRequestPlanner.PermissionState(
+                    permission = permission,
+                    shouldShowRationale = shouldShowRequestPermissionRationale(permission),
+                    wasRequestedBefore = hasPermissionBeenRequested(permission),
+                )
+            },
+        )
+        when (action) {
+            PermissionRequestPlanner.Action.NONE -> Unit
+            PermissionRequestPlanner.Action.SHOW_RATIONALE -> {
+                showPermissionRationale(missingPermissions.toTypedArray())
+            }
+            PermissionRequestPlanner.Action.REQUEST -> {
+                launchPermissionRequest(missingPermissions.toTypedArray())
+            }
+            PermissionRequestPlanner.Action.OPEN_SETTINGS -> {
+                Toast.makeText(
+                    this,
+                "Разрешение заблокировано. Откройте настройки приложения.",
+                    Toast.LENGTH_LONG,
+                ).show()
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.fromParts("package", packageName, null)
+                }
+                startActivity(intent)
+            }
+        }
+    }
+
+    private fun launchPermissionRequest(permissions: Array<String>) {
+        if (permissions.isEmpty()) return
+        markPermissionsRequested(permissions.asList())
+        permissionLauncher.launch(permissions)
+    }
+
+    private fun markPermissionsRequested(permissions: Collection<String>) {
+        val requested = prefs.getStringSet(PREF_REQUESTED_PERMISSIONS, emptySet())
+            ?.toMutableSet()
+            ?: mutableSetOf()
+        requested.addAll(permissions)
+        prefs.edit().putStringSet(PREF_REQUESTED_PERMISSIONS, requested).apply()
+    }
+
+    private fun hasPermissionBeenRequested(permission: String): Boolean {
+        return prefs.getStringSet(PREF_REQUESTED_PERMISSIONS, emptySet())
+            ?.contains(permission) == true
+    }
+
+    private fun onRunCheckClicked() {
+        runCheck()
+    }
+
     private fun runCheck() {
         btnRunCheck.isEnabled = false
         btnStopCheck.visibility = View.VISIBLE
         progressBar.visibility = View.VISIBLE
         hideCards()
 
-        // Show bypass card immediately with scanning status
         cardBypass.visibility = View.VISIBLE
         iconBypass.setImageResource(R.drawable.ic_help)
         statusBypass.text = "Сканирование..."
@@ -152,20 +271,16 @@ class MainActivity : AppCompatActivity() {
         cardGeoIp.visibility = View.GONE
         cardDirect.visibility = View.GONE
         cardIndirect.visibility = View.GONE
+        cardLocation.visibility = View.GONE
         cardBypass.visibility = View.GONE
         cardVerdict.visibility = View.GONE
     }
 
     private fun displayResult(result: CheckResult) {
-        displayCategory(
-            result.geoIp, cardGeoIp, iconGeoIp, statusGeoIp, findingsGeoIp
-        )
-        displayCategory(
-            result.directSigns, cardDirect, iconDirect, statusDirect, findingsDirect
-        )
-        displayCategory(
-            result.indirectSigns, cardIndirect, iconIndirect, statusIndirect, findingsIndirect
-        )
+        displayCategory(result.geoIp, cardGeoIp, iconGeoIp, statusGeoIp, findingsGeoIp)
+        displayCategory(result.directSigns, cardDirect, iconDirect, statusDirect, findingsDirect)
+        displayCategory(result.indirectSigns, cardIndirect, iconIndirect, statusIndirect, findingsIndirect)
+        displayCategory(result.locationSignals, cardLocation, iconLocation, statusLocation, findingsLocation)
         displayBypass(result.bypassResult)
         displayVerdict(result.verdict)
     }
@@ -175,7 +290,7 @@ class MainActivity : AppCompatActivity() {
         card: MaterialCardView,
         icon: ImageView,
         status: TextView,
-        findingsContainer: LinearLayout
+        findingsContainer: LinearLayout,
     ) {
         card.visibility = View.VISIBLE
 
@@ -195,6 +310,7 @@ class MainActivity : AppCompatActivity() {
 
         findingsContainer.removeAllViews()
         for (finding in category.findings) {
+            if (finding.description.startsWith("network_mcc_ru:")) continue
             findingsContainer.addView(createFindingView(finding))
         }
     }
@@ -219,8 +335,8 @@ class MainActivity : AppCompatActivity() {
                         finding.detected -> R.color.finding_detected
                         finding.needsReview -> R.color.verdict_yellow
                         else -> R.color.finding_ok
-                    }
-                )
+                    },
+                ),
             )
             textSize = 14f
             typeface = Typeface.DEFAULT_BOLD
@@ -274,7 +390,7 @@ class MainActivity : AppCompatActivity() {
                 textVerdict.text = "Обход не выявлен"
                 textVerdict.setTextColor(ContextCompat.getColor(this, R.color.verdict_green))
                 cardVerdict.setCardBackgroundColor(
-                    ContextCompat.getColor(this, R.color.verdict_green_bg)
+                    ContextCompat.getColor(this, R.color.verdict_green_bg),
                 )
             }
             Verdict.NEEDS_REVIEW -> {
@@ -282,7 +398,7 @@ class MainActivity : AppCompatActivity() {
                 textVerdict.text = "Требуется дополнительная проверка"
                 textVerdict.setTextColor(ContextCompat.getColor(this, R.color.verdict_yellow))
                 cardVerdict.setCardBackgroundColor(
-                    ContextCompat.getColor(this, R.color.verdict_yellow_bg)
+                    ContextCompat.getColor(this, R.color.verdict_yellow_bg),
                 )
             }
             Verdict.DETECTED -> {
@@ -290,7 +406,7 @@ class MainActivity : AppCompatActivity() {
                 textVerdict.text = "Обход выявлен"
                 textVerdict.setTextColor(ContextCompat.getColor(this, R.color.verdict_red))
                 cardVerdict.setCardBackgroundColor(
-                    ContextCompat.getColor(this, R.color.verdict_red_bg)
+                    ContextCompat.getColor(this, R.color.verdict_red_bg),
                 )
             }
         }
@@ -298,4 +414,9 @@ class MainActivity : AppCompatActivity() {
 
     private val Int.dp: Int
         get() = (this * resources.displayMetrics.density).toInt()
+
+    companion object {
+        private const val PREF_RATIONALE_SHOWN = "permissions_rationale_shown"
+        private const val PREF_REQUESTED_PERMISSIONS = "requested_permissions"
+    }
 }

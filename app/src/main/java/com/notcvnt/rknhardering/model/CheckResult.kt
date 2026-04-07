@@ -23,6 +23,7 @@ enum class EvidenceSource {
     ROUTING,
     DNS,
     DUMPSYS,
+    LOCATION_SIGNALS,
 }
 
 enum class VpnAppKind {
@@ -100,6 +101,7 @@ data class CheckResult(
     val geoIp: CategoryResult,
     val directSigns: CategoryResult,
     val indirectSigns: CategoryResult,
+    val locationSignals: CategoryResult,
     val bypassResult: BypassResult,
     val verdict: Verdict,
 )

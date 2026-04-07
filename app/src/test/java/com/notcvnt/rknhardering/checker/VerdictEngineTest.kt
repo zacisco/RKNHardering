@@ -5,6 +5,7 @@ import com.notcvnt.rknhardering.model.CategoryResult
 import com.notcvnt.rknhardering.model.EvidenceConfidence
 import com.notcvnt.rknhardering.model.EvidenceItem
 import com.notcvnt.rknhardering.model.EvidenceSource
+import com.notcvnt.rknhardering.model.Finding
 import com.notcvnt.rknhardering.model.Verdict
 import com.notcvnt.rknhardering.model.VpnAppKind
 import org.junit.Assert.assertEquals
@@ -18,6 +19,7 @@ class VerdictEngineTest {
             geoIp = category(),
             directSigns = category(),
             indirectSigns = category(),
+            locationSignals = category(),
             bypassResult = bypass(
                 evidence = listOf(
                     evidence(
@@ -53,6 +55,7 @@ class VerdictEngineTest {
                     ),
                 ),
             ),
+            locationSignals = category(),
             bypassResult = bypass(),
         )
 
@@ -73,6 +76,7 @@ class VerdictEngineTest {
                     ),
                 ),
             ),
+            locationSignals = category(),
             bypassResult = bypass(),
         )
 
@@ -85,6 +89,7 @@ class VerdictEngineTest {
             geoIp = category(),
             directSigns = category(),
             indirectSigns = category(),
+            locationSignals = category(),
             bypassResult = bypass(
                 evidence = listOf(
                     evidence(
@@ -104,6 +109,7 @@ class VerdictEngineTest {
             geoIp = category(needsReview = true),
             directSigns = category(),
             indirectSigns = category(),
+            locationSignals = category(),
             bypassResult = bypass(),
         )
 
@@ -116,6 +122,86 @@ class VerdictEngineTest {
             geoIp = category(),
             directSigns = category(),
             indirectSigns = category(),
+            locationSignals = category(),
+            bypassResult = bypass(),
+        )
+
+        assertEquals(Verdict.NOT_DETECTED, verdict)
+    }
+
+    @Test
+    fun `network mcc RU plus foreign geoip returns detected`() {
+        val verdict = VerdictEngine.evaluate(
+            geoIp = category(needsReview = true),
+            directSigns = category(),
+            indirectSigns = category(),
+            locationSignals = locationCategory(networkMccRu = true),
+            bypassResult = bypass(),
+        )
+
+        assertEquals(Verdict.DETECTED, verdict)
+    }
+
+    @Test
+    fun `network mcc RU foreign sim roaming plus foreign geoip returns detected`() {
+        val geoEvidence = evidence(
+            source = EvidenceSource.GEO_IP,
+            confidence = EvidenceConfidence.MEDIUM,
+        )
+
+        val verdict = VerdictEngine.evaluate(
+            geoIp = category(evidence = listOf(geoEvidence)),
+            directSigns = category(),
+            indirectSigns = category(),
+            locationSignals = locationCategory(networkMccRu = true),
+            bypassResult = bypass(),
+        )
+
+        assertEquals(Verdict.DETECTED, verdict)
+    }
+
+    @Test
+    fun `foreign network mcc plus foreign geoip returns needs review`() {
+        val locationEvidence = evidence(
+            source = EvidenceSource.LOCATION_SIGNALS,
+            confidence = EvidenceConfidence.MEDIUM,
+        )
+        val geoEvidence = evidence(
+            source = EvidenceSource.GEO_IP,
+            confidence = EvidenceConfidence.MEDIUM,
+        )
+
+        val verdict = VerdictEngine.evaluate(
+            geoIp = category(evidence = listOf(geoEvidence), needsReview = true),
+            directSigns = category(),
+            indirectSigns = category(),
+            locationSignals = category(evidence = listOf(locationEvidence), needsReview = true),
+            bypassResult = bypass(),
+        )
+
+        assertEquals(Verdict.NEEDS_REVIEW, verdict)
+    }
+
+    @Test
+    fun `empty location signals does not affect verdict`() {
+        val verdict = VerdictEngine.evaluate(
+            geoIp = category(),
+            directSigns = category(),
+            indirectSigns = category(),
+            locationSignals = category(),
+            bypassResult = bypass(),
+        )
+
+        assertEquals(Verdict.NOT_DETECTED, verdict)
+    }
+
+    @Test
+    fun `network mcc RU without foreign geoip returns not detected`() {
+        val verdict = VerdictEngine.evaluate(
+            geoIp = category(),
+            directSigns = category(),
+            indirectSigns = category(),
+            locationSignals = locationCategory(networkMccRu = true),
             bypassResult = bypass(),
         )
 
@@ -132,6 +218,24 @@ class VerdictEngineTest {
         needsReview = needsReview,
         evidence = evidence,
     )
+
+    private fun locationCategory(
+        networkMccRu: Boolean,
+        evidence: List<EvidenceItem> = emptyList(),
+    ): CategoryResult {
+        val findings = if (networkMccRu) {
+            listOf(Finding("Network MCC: 250"), Finding("network_mcc_ru:true"))
+        } else {
+            listOf(Finding("Network MCC: 244"))
+        }
+        return CategoryResult(
+            name = "Сигналы местоположения",
+            detected = false,
+            findings = findings,
+            needsReview = !networkMccRu,
+            evidence = evidence,
+        )
+    }
 
     private fun bypass(
         evidence: List<EvidenceItem> = emptyList(),

@@ -14,12 +14,14 @@ object VerdictEngine {
         geoIp: CategoryResult,
         directSigns: CategoryResult,
         indirectSigns: CategoryResult,
+        locationSignals: CategoryResult,
         bypassResult: BypassResult,
     ): Verdict {
         val evidence = buildList {
             addAll(geoIp.evidence)
             addAll(directSigns.evidence)
             addAll(indirectSigns.evidence)
+            addAll(locationSignals.evidence)
             addAll(bypassResult.evidence)
         }
 
@@ -30,7 +32,17 @@ object VerdictEngine {
             return Verdict.DETECTED
         }
 
-        val hasGeo = evidence.any { it.source == EvidenceSource.GEO_IP && it.detected }
+        // Location signals: Network MCC is RU + GeoIP is foreign -> DETECTED
+        val networkMccIsRu = locationSignals.findings.any {
+            it.description.contains("network_mcc_ru:true")
+        }
+        val hasGeoSignal = geoIp.needsReview || evidence.any {
+            it.source == EvidenceSource.GEO_IP && it.detected
+        }
+        if (networkMccIsRu && hasGeoSignal) {
+            return Verdict.DETECTED
+        }
+
         val hasStrongTransport = evidence.any {
             it.source == EvidenceSource.NETWORK_CAPABILITIES && it.confidence == EvidenceConfidence.HIGH
         }
@@ -45,11 +57,13 @@ object VerdictEngine {
             it.source == EvidenceSource.ACTIVE_VPN && it.kind == VpnAppKind.GENERIC_VPN
         }
 
-        if (hasTargetedActive && (hasLocalProxy || hasStrongTransport || hasGeo || hasTargetedInstalled)) {
+        if (hasTargetedActive &&
+            (hasLocalProxy || hasStrongTransport || hasGeoSignal || hasTargetedInstalled)
+        ) {
             return Verdict.DETECTED
         }
 
-        if (hasGeo && (hasStrongTransport || hasLocalProxy || hasTargetedActive)) {
+        if (hasGeoSignal && (hasStrongTransport || hasLocalProxy || hasTargetedActive)) {
             return Verdict.DETECTED
         }
 
