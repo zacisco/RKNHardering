@@ -32,6 +32,12 @@ object IndirectSignsChecker {
         OTHER_PUBLIC,
     }
 
+    internal enum class DnsSignalStatus {
+        CLEAR,
+        NEEDS_REVIEW,
+        DETECTED,
+    }
+
     private val VPN_INTERFACE_PATTERNS = listOf(
         Regex("^tun\\d+"),
         Regex("^tap\\d+"),
@@ -354,7 +360,7 @@ object IndirectSignsChecker {
                         findings.add(
                             Finding(
                                 description = "DNS в частной подсети: $addr (может указывать на VPN-туннель)",
-                                detected = true,
+                                needsReview = true,
                                 source = EvidenceSource.DNS,
                                 confidence = EvidenceConfidence.MEDIUM,
                             ),
@@ -367,26 +373,16 @@ object IndirectSignsChecker {
                                 description = "DNS resolver uses private tunnel address $addr",
                             ),
                         )
-                        detected = true
+                        needsReview = true
                     }
                     DnsClassification.KNOWN_PUBLIC_RESOLVER -> {
                         findings.add(
                             Finding(
                                 description = "DNS использует публичный резолвер: $addr",
-                                needsReview = true,
                                 source = EvidenceSource.DNS,
                                 confidence = EvidenceConfidence.LOW,
                             ),
                         )
-                        evidence.add(
-                            EvidenceItem(
-                                source = EvidenceSource.DNS,
-                                detected = true,
-                                confidence = EvidenceConfidence.LOW,
-                                description = "DNS resolver uses known public resolver $addr",
-                            ),
-                        )
-                        needsReview = true
                     }
                     DnsClassification.LINK_LOCAL -> findings.add(Finding("DNS: $addr (link-local)"))
                     DnsClassification.OTHER_PUBLIC -> findings.add(Finding("DNS: $addr"))
@@ -592,5 +588,17 @@ object IndirectSignsChecker {
         if (normalized.startsWith("192.168.")) return DnsClassification.PRIVATE_LAN
         if (normalized in KNOWN_PUBLIC_RESOLVERS) return DnsClassification.KNOWN_PUBLIC_RESOLVER
         return DnsClassification.OTHER_PUBLIC
+    }
+
+    internal fun classifyDnsSignalStatus(addr: String): DnsSignalStatus {
+        return when (classifyDnsAddress(addr)) {
+            DnsClassification.LOOPBACK -> DnsSignalStatus.DETECTED
+            DnsClassification.PRIVATE_TUNNEL -> DnsSignalStatus.NEEDS_REVIEW
+            DnsClassification.PRIVATE_LAN,
+            DnsClassification.KNOWN_PUBLIC_RESOLVER,
+            DnsClassification.LINK_LOCAL,
+            DnsClassification.OTHER_PUBLIC,
+            -> DnsSignalStatus.CLEAR
+        }
     }
 }
