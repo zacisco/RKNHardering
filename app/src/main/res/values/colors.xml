@@ -2,15 +2,40 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="background">#FFF5F5F5</color>
-    <color name="text_primary">#FF1B1B1B</color>
-    <color name="text_secondary">#FF757575</color>
-    <color name="verdict_green">#FF2E7D32</color>
-    <color name="verdict_green_bg">#FFE8F5E9</color>
-    <color name="verdict_yellow">#FFF57F17</color>
-    <color name="verdict_yellow_bg">#FFFFF8E1</color>
-    <color name="verdict_red">#FFC62828</color>
-    <color name="verdict_red_bg">#FFFFEBEE</color>
-    <color name="finding_detected">#FFE53935</color>
-    <color name="finding_ok">#FF43A047</color>
+
+    <!-- M3 Grey Primary palette -->
+    <color name="md_primary">#FF5D5D6B</color>
+    <color name="md_on_primary">#FFFFFFFF</color>
+    <color name="md_primary_container">#FFE3E1EC</color>
+    <color name="md_on_primary_container">#FF1A1A26</color>
+    <color name="md_secondary_container">#FFE4E1F0</color>
+    <color name="md_on_secondary_container">#FF1B1B27</color>
+
+    <!-- M3 Surface tokens -->
+    <color name="md_surface">#FFFAFAFA</color>
+    <color name="md_surface_container">#FFF0EFF4</color>
+    <color name="md_on_surface">#FF1C1B1F</color>
+    <color name="md_on_surface_variant">#FF47464F</color>
+    <color name="md_outline_variant">#FFC8C5D0</color>
+
+    <!-- Status colours — used in findings and verdicts -->
+    <color name="status_green">#FF1A6B2A</color>
+    <color name="status_green_container">#FFD4EDDA</color>
+    <color name="status_green_on_container">#FF0F4018</color>
+    <color name="status_red">#FFB3261E</color>
+    <color name="status_red_container">#FFFFDAD6</color>
+    <color name="status_red_on_container">#FF680003</color>
+    <color name="status_amber">#FF7A5C00</color>
+    <color name="status_amber_container">#FFFFEFC8</color>
+    <color name="status_amber_on_container">#FF4A3800</color>
+
+    <!-- Legacy aliases — keep for existing code that references these -->
+    <color name="verdict_green">@color/status_green</color>
+    <color name="verdict_green_bg">@color/status_green_container</color>
+    <color name="verdict_yellow">@color/status_amber</color>
+    <color name="verdict_yellow_bg">@color/status_amber_container</color>
+    <color name="verdict_red">@color/status_red</color>
+    <color name="verdict_red_bg">@color/status_red_container</color>
+    <color name="finding_detected">@color/status_red</color>
+    <color name="finding_ok">@color/status_green</color>
 </resources>
