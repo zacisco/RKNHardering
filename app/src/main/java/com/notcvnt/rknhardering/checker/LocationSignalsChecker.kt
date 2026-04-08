@@ -1,18 +1,21 @@
 package com.notcvnt.rknhardering.checker
 
 import android.Manifest
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.location.Geocoder
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.wifi.ScanResult
 import android.net.wifi.WifiInfo
 import android.net.wifi.WifiManager
 import android.os.Build
 import android.telephony.CellInfo
 import android.telephony.CellInfoGsm
 import android.telephony.CellInfoLte
-import android.telephony.CellInfoNr
 import android.telephony.CellInfoTdscdma
 import android.telephony.CellInfoWcdma
 import android.telephony.TelephonyManager
@@ -23,8 +26,11 @@ import com.notcvnt.rknhardering.model.EvidenceItem
 import com.notcvnt.rknhardering.model.EvidenceSource
 import com.notcvnt.rknhardering.model.Finding
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.Locale
+import kotlin.coroutines.resume
 
 object LocationSignalsChecker {
 
@@ -38,22 +44,32 @@ object LocationSignalsChecker {
         val cellCountryCode: String?,
         val cellLookupSummary: String?,
         val cellCandidatesCount: Int,
+        val wifiAccessPointCandidatesCount: Int,
         val bssid: String?,
-        val fineLocationPermissionGranted: Boolean,
+        val cellLookupPermissionGranted: Boolean,
+        val wifiPermissionGranted: Boolean,
     )
 
     private const val RUSSIA_MCC = "250"
     private const val PLACEHOLDER_BSSID = "02:00:00:00:00:00"
+    private const val CELL_INFO_TIMEOUT_MS = 3_000L
+    private const val WIFI_SCAN_TIMEOUT_MS = 3_000L
+    private const val MAX_CELL_TOWERS = 6
+    private const val MAX_WIFI_ACCESS_POINTS = 12
 
     suspend fun check(context: Context): CategoryResult = withContext(Dispatchers.IO) {
         evaluate(collectSnapshot(context))
     }
 
     private suspend fun collectSnapshot(context: Context): LocationSnapshot {
-        val fineLocationGranted = ContextCompat.checkSelfPermission(
-            context,
-            Manifest.permission.ACCESS_FINE_LOCATION,
-        ) == PackageManager.PERMISSION_GRANTED
+        val fineLocationGranted = hasPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+        val nearbyWifiGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            hasPermission(context, Manifest.permission.NEARBY_WIFI_DEVICES)
+        } else {
+            true
+        }
+        val cellLookupPermissionGranted = fineLocationGranted
+        val wifiPermissionGranted = fineLocationGranted && nearbyWifiGranted
 
         var networkMcc: String? = null
         var networkCountryIso: String? = null
@@ -64,6 +80,7 @@ object LocationSignalsChecker {
         var cellCountryCode: String? = null
         var cellLookupSummary: String? = null
         var cellCandidatesCount = 0
+        var wifiAccessPointCandidatesCount = 0
 
         val tm = context.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
         runCatching {
@@ -82,26 +99,31 @@ object LocationSignalsChecker {
             isRoaming = tm.isNetworkRoaming
         }
 
-        if (fineLocationGranted) {
-            val candidates = collectCellCandidates(tm)
-            cellCandidatesCount = candidates.size
-            cellLookupSummary = if (candidates.isEmpty()) {
-                "Cell lookup: base station identifiers are unavailable"
-            } else {
-                val lookup = OpenCellIdClient { lat, lon ->
-                    reverseGeocodeCountry(context, lat, lon)
-                }.lookup(candidates)
-                cellCountryCode = lookup.countryCode
-                buildString {
-                    append(lookup.summary)
-                    if (lookup.latitude != null && lookup.longitude != null) {
-                        append(" (${lookup.latitude}, ${lookup.longitude})")
-                    }
+        val cellCandidates = if (cellLookupPermissionGranted) {
+            collectCellCandidates(context, tm).also { cellCandidatesCount = it.size }
+        } else {
+            emptyList()
+        }
+        val wifiCandidates = if (wifiPermissionGranted) {
+            collectWifiCandidates(context).also { wifiAccessPointCandidatesCount = it.size }
+        } else {
+            emptyList()
+        }
+
+        if (cellLookupPermissionGranted || wifiPermissionGranted) {
+            val lookup = BeaconDbClient(countryResolver = { lat, lon ->
+                reverseGeocodeCountry(context, lat, lon)
+            }).lookup(cellCandidates, wifiCandidates)
+            cellCountryCode = lookup.countryCode
+            cellLookupSummary = buildString {
+                append(lookup.summary)
+                if (lookup.latitude != null && lookup.longitude != null) {
+                    append(" (${lookup.latitude}, ${lookup.longitude})")
                 }
             }
         }
 
-        val bssid = if (fineLocationGranted) {
+        val bssid = if (wifiPermissionGranted) {
             runCatching { getBssid(context) }.getOrNull()
         } else {
             null
@@ -117,95 +139,228 @@ object LocationSignalsChecker {
             cellCountryCode = cellCountryCode,
             cellLookupSummary = cellLookupSummary,
             cellCandidatesCount = cellCandidatesCount,
+            wifiAccessPointCandidatesCount = wifiAccessPointCandidatesCount,
             bssid = bssid,
-            fineLocationPermissionGranted = fineLocationGranted,
+            cellLookupPermissionGranted = cellLookupPermissionGranted,
+            wifiPermissionGranted = wifiPermissionGranted,
         )
     }
 
-    private fun collectCellCandidates(tm: TelephonyManager): List<CellLookupCandidate> {
-        return runCatching {
-            tm.allCellInfo
-                ?.mapNotNull(::toLookupCandidate)
-                ?.distinctBy { listOf(it.radio, it.mcc, it.mnc, it.areaCode, it.cellId) }
-                .orEmpty()
-        }.getOrDefault(emptyList())
+    private fun hasPermission(context: Context, permission: String): Boolean {
+        return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private suspend fun collectCellCandidates(
+        context: Context,
+        tm: TelephonyManager,
+    ): List<CellLookupCandidate> {
+        val fresh = requestFreshCellInfo(context, tm)
+        val fallback = runCatching { tm.allCellInfo.orEmpty() }.getOrDefault(emptyList())
+        return (fresh.ifEmpty { fallback })
+            .mapNotNull(::toLookupCandidate)
+            .distinctBy { listOf(it.radio, it.mcc, it.mnc, it.areaCode, it.cellId) }
+            .sortedWith(
+                compareByDescending<CellLookupCandidate> { it.registered }
+                    .thenByDescending { it.signalStrength ?: Int.MIN_VALUE },
+            )
+            .take(MAX_CELL_TOWERS)
+    }
+
+    @Suppress("MissingPermission")
+    private suspend fun requestFreshCellInfo(
+        context: Context,
+        tm: TelephonyManager,
+    ): List<CellInfo> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+            return emptyList()
+        }
+
+        return withTimeoutOrNull(CELL_INFO_TIMEOUT_MS) {
+            suspendCancellableCoroutine { continuation ->
+                val requested = runCatching {
+                    tm.requestCellInfoUpdate(
+                        context.mainExecutor,
+                        object : TelephonyManager.CellInfoCallback() {
+                            override fun onCellInfo(cellInfo: MutableList<CellInfo>) {
+                                if (continuation.isActive) {
+                                    continuation.resume(cellInfo.toList())
+                                }
+                            }
+                        },
+                    )
+                }.isSuccess
+
+                if (!requested && continuation.isActive) {
+                    continuation.resume(emptyList())
+                }
+            }
+        } ?: emptyList()
     }
 
     private fun toLookupCandidate(info: CellInfo): CellLookupCandidate? {
         return when (info) {
             is CellInfoGsm -> {
                 val identity = info.cellIdentity
-                val mcc = identity.mccString ?: return null
-                val mnc = identity.mncString ?: return null
+                val mcc = normalizeOperatorCode(identity.mccString) ?: return null
+                val mnc = normalizeOperatorCode(identity.mncString) ?: return null
+                val areaCode = normalizeCellValue(identity.lac) ?: return null
+                val cellId = normalizeCellValue(identity.cid) ?: return null
                 CellLookupCandidate(
-                    radio = "GSM",
+                    radio = "gsm",
                     mcc = mcc,
                     mnc = mnc,
-                    areaCode = identity.lac.toLong(),
-                    cellId = identity.cid.toLong(),
+                    areaCode = areaCode,
+                    cellId = cellId,
                     registered = info.isRegistered,
+                    signalStrength = normalizeSignalStrength(info.cellSignalStrength.dbm),
                 )
             }
 
             is CellInfoLte -> {
                 val identity = info.cellIdentity
-                val mcc = identity.mccString ?: return null
-                val mnc = identity.mncString ?: return null
+                val mcc = normalizeOperatorCode(identity.mccString) ?: return null
+                val mnc = normalizeOperatorCode(identity.mncString) ?: return null
+                val areaCode = normalizeCellValue(identity.tac) ?: return null
+                val cellId = normalizeCellValue(identity.ci) ?: return null
                 CellLookupCandidate(
-                    radio = "LTE",
+                    radio = "lte",
                     mcc = mcc,
                     mnc = mnc,
-                    areaCode = identity.tac.toLong(),
-                    cellId = identity.ci.toLong(),
+                    areaCode = areaCode,
+                    cellId = cellId,
                     registered = info.isRegistered,
+                    signalStrength = normalizeSignalStrength(info.cellSignalStrength.dbm),
                 )
             }
 
             is CellInfoWcdma -> {
                 val identity = info.cellIdentity
-                val mcc = identity.mccString ?: return null
-                val mnc = identity.mncString ?: return null
+                val mcc = normalizeOperatorCode(identity.mccString) ?: return null
+                val mnc = normalizeOperatorCode(identity.mncString) ?: return null
+                val areaCode = normalizeCellValue(identity.lac) ?: return null
+                val cellId = normalizeCellValue(identity.cid) ?: return null
                 CellLookupCandidate(
-                    radio = "UMTS",
+                    radio = "wcdma",
                     mcc = mcc,
                     mnc = mnc,
-                    areaCode = identity.lac.toLong(),
-                    cellId = identity.cid.toLong(),
+                    areaCode = areaCode,
+                    cellId = cellId,
                     registered = info.isRegistered,
+                    signalStrength = normalizeSignalStrength(info.cellSignalStrength.dbm),
                 )
             }
 
-            is CellInfoTdscdma -> {
-                val identity = info.cellIdentity
-                val mcc = identity.mccString ?: return null
-                val mnc = identity.mncString ?: return null
-                CellLookupCandidate(
-                    radio = "TDSCDMA",
-                    mcc = mcc,
-                    mnc = mnc,
-                    areaCode = identity.lac.toLong(),
-                    cellId = identity.cid.toLong(),
-                    registered = info.isRegistered,
-                )
-            }
-
-            is CellInfoNr -> {
-                val identity = info.cellIdentity
-                val mcc = invokeStringGetter(identity, "getMccString") ?: return null
-                val mnc = invokeStringGetter(identity, "getMncString") ?: return null
-                val tac = invokeLongGetter(identity, "getTac") ?: return null
-                val nci = invokeLongGetter(identity, "getNci") ?: return null
-                CellLookupCandidate(
-                    radio = "NR",
-                    mcc = mcc,
-                    mnc = mnc,
-                    areaCode = tac,
-                    cellId = nci,
-                    registered = info.isRegistered,
-                )
-            }
-
+            is CellInfoTdscdma -> null
             else -> null
+        }
+    }
+
+    private suspend fun collectWifiCandidates(context: Context): List<WifiLookupCandidate> {
+        val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        val cachedCandidates = currentWifiCandidates(wifiManager)
+        val refreshedCandidates = requestFreshWifiScan(context, wifiManager)
+
+        return (refreshedCandidates ?: cachedCandidates)
+            .distinctBy { it.macAddress }
+            .sortedByDescending { it.signalStrength ?: Int.MIN_VALUE }
+            .take(MAX_WIFI_ACCESS_POINTS)
+    }
+
+    @Suppress("MissingPermission", "DEPRECATION")
+    private suspend fun requestFreshWifiScan(
+        context: Context,
+        wifiManager: WifiManager,
+    ): List<WifiLookupCandidate>? {
+        val appContext = context.applicationContext
+        return withTimeoutOrNull(WIFI_SCAN_TIMEOUT_MS) {
+            suspendCancellableCoroutine { continuation ->
+                val receiver = object : BroadcastReceiver() {
+                    override fun onReceive(receiverContext: Context?, intent: Intent?) {
+                        if (intent?.action != WifiManager.SCAN_RESULTS_AVAILABLE_ACTION) {
+                            return
+                        }
+                        runCatching { appContext.unregisterReceiver(this) }
+                        if (continuation.isActive) {
+                            continuation.resume(currentWifiCandidates(wifiManager))
+                        }
+                    }
+                }
+
+                val registered = runCatching {
+                    ContextCompat.registerReceiver(
+                        appContext,
+                        receiver,
+                        IntentFilter(WifiManager.SCAN_RESULTS_AVAILABLE_ACTION),
+                        ContextCompat.RECEIVER_NOT_EXPORTED,
+                    )
+                }.isSuccess
+
+                if (!registered) {
+                    if (continuation.isActive) {
+                        continuation.resume(currentWifiCandidates(wifiManager))
+                    }
+                    return@suspendCancellableCoroutine
+                }
+
+                continuation.invokeOnCancellation {
+                    runCatching { appContext.unregisterReceiver(receiver) }
+                }
+
+                val started = runCatching { wifiManager.startScan() }.getOrDefault(false)
+                if (!started) {
+                    runCatching { appContext.unregisterReceiver(receiver) }
+                    if (continuation.isActive) {
+                        continuation.resume(currentWifiCandidates(wifiManager))
+                    }
+                }
+            }
+        }
+    }
+
+    @Suppress("MissingPermission")
+    private fun currentWifiCandidates(wifiManager: WifiManager): List<WifiLookupCandidate> {
+        return runCatching {
+            wifiManager.scanResults
+                ?.mapNotNull(::toWifiLookupCandidate)
+                .orEmpty()
+        }.getOrDefault(emptyList())
+    }
+
+    private fun toWifiLookupCandidate(scanResult: ScanResult): WifiLookupCandidate? {
+        val macAddress = normalizeMacAddress(scanResult.BSSID) ?: return null
+        val ssid = normalizeSsid(scanResult.SSID) ?: return null
+        if (ssid.endsWith("_nomap", ignoreCase = true)) return null
+
+        return WifiLookupCandidate(
+            macAddress = macAddress,
+            frequency = scanResult.frequency.takeIf { it > 0 },
+            signalStrength = normalizeSignalStrength(scanResult.level),
+        )
+    }
+
+    private fun normalizeOperatorCode(value: String?): String? {
+        return value?.takeIf { it.isNotBlank() && it.all(Char::isDigit) }
+    }
+
+    private fun normalizeCellValue(value: Int): Long? {
+        return value.toLong().takeIf { it in 0 until Int.MAX_VALUE.toLong() }
+    }
+
+    private fun normalizeSignalStrength(value: Int): Int? {
+        return value.takeIf { it in -150..0 }
+    }
+
+    private fun normalizeMacAddress(value: String?): String? {
+        val normalized = value?.trim()?.lowercase(Locale.US) ?: return null
+        if (normalized == PLACEHOLDER_BSSID) return null
+        if (!MAC_ADDRESS_REGEX.matches(normalized)) return null
+        return normalized
+    }
+
+    private fun normalizeSsid(value: String?): String? {
+        val normalized = value?.trim().orEmpty()
+        return normalized.takeIf {
+            it.isNotEmpty() && !it.equals("<unknown ssid>", ignoreCase = true)
         }
     }
 
@@ -222,22 +377,6 @@ object LocationSignalsChecker {
                     ?.uppercase(Locale.US)
             }
         }.getOrNull()
-    }
-
-    private fun invokeStringGetter(target: Any, methodName: String): String? {
-        return runCatching {
-            target.javaClass.getMethod(methodName).invoke(target) as? String
-        }.getOrNull()?.takeIf { it.isNotBlank() }
-    }
-
-    private fun invokeLongGetter(target: Any, methodName: String): Long? {
-        return runCatching {
-            when (val value = target.javaClass.getMethod(methodName).invoke(target)) {
-                is Int -> value.toLong()
-                is Long -> value
-                else -> null
-            }
-        }.getOrNull()?.takeIf { it >= 0 }
     }
 
     @Suppress("DEPRECATION")
@@ -305,23 +444,34 @@ object LocationSignalsChecker {
             }
         }
 
-        if (!snapshot.fineLocationPermissionGranted) {
+        if (!snapshot.cellLookupPermissionGranted) {
             findings += Finding("Cell lookup: ACCESS_FINE_LOCATION permission is not granted")
-        } else if (snapshot.cellCandidatesCount == 0) {
-            findings += Finding("Cell lookup: base station identifiers are unavailable")
         } else {
             findings += Finding("Cell lookup candidates: ${snapshot.cellCandidatesCount}")
-            snapshot.cellCountryCode?.let { countryCode ->
-                findings += Finding("Cell lookup country: $countryCode")
-                if (countryCode == "RU") {
-                    findings += Finding("cell_country_ru:true")
-                    findings += Finding("location_country_ru:true")
-                }
+            if (snapshot.cellCandidatesCount == 0) {
+                findings += Finding("Cell lookup: base station identifiers are unavailable")
             }
-            snapshot.cellLookupSummary?.let { findings += Finding(it) }
         }
 
-        if (!snapshot.fineLocationPermissionGranted) {
+        if (!snapshot.wifiPermissionGranted) {
+            findings += Finding("Wi-Fi scan: permissions are not granted")
+        } else {
+            findings += Finding("Wi-Fi scan candidates: ${snapshot.wifiAccessPointCandidatesCount}")
+            if (snapshot.wifiAccessPointCandidatesCount == 0) {
+                findings += Finding("Wi-Fi scan: access points are unavailable")
+            }
+        }
+
+        snapshot.cellCountryCode?.let { countryCode ->
+            findings += Finding("Cell lookup country: $countryCode")
+            if (countryCode == "RU") {
+                findings += Finding("cell_country_ru:true")
+                findings += Finding("location_country_ru:true")
+            }
+        }
+        snapshot.cellLookupSummary?.let { findings += Finding(it) }
+
+        if (!snapshot.wifiPermissionGranted) {
             findings += Finding("BSSID: permission is not granted")
         } else if (snapshot.bssid == null || snapshot.bssid == PLACEHOLDER_BSSID) {
             findings += Finding("BSSID: unavailable")
@@ -337,4 +487,6 @@ object LocationSignalsChecker {
             evidence = evidence,
         )
     }
+
+    private val MAC_ADDRESS_REGEX = Regex("^[0-9a-f]{2}(?::[0-9a-f]{2}){5}$")
 }

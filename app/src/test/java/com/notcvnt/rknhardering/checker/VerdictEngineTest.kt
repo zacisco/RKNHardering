@@ -109,6 +109,25 @@ class VerdictEngineTest {
         assertEquals(Verdict.NOT_DETECTED, verdict)
     }
 
+    @Test
+    fun `coarse BeaconDB fallback does not override foreign geoip on its own`() {
+        val verdict = VerdictEngine.evaluate(
+            geoIp = geoCategory(true),
+            directSigns = category(),
+            indirectSigns = category(),
+            locationSignals = CategoryResult(
+                name = "location",
+                detected = false,
+                findings = listOf(Finding("BeaconDB: coarse cell area fallback")),
+                needsReview = false,
+                evidence = emptyList(),
+            ),
+            bypassResult = bypass(),
+        )
+
+        assertEquals(Verdict.NEEDS_REVIEW, verdict)
+    }
+
     private data class MatrixCase(
         val label: String,
         val geo: Boolean,

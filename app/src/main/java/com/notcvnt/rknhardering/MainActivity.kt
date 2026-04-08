@@ -577,23 +577,6 @@ class MainActivity : AppCompatActivity() {
         container.addView(topRow)
         container.addView(url)
 
-        if (response.ipv4Records.isNotEmpty()) {
-            container.addView(
-                createIpDnsView(
-                    label = "A",
-                    value = response.ipv4Records.joinToString(),
-                ),
-            )
-        }
-        if (response.ipv6Records.isNotEmpty()) {
-            container.addView(
-                createIpDnsView(
-                    label = "AAAA",
-                    value = response.ipv6Records.joinToString(),
-                ),
-            )
-        }
-
         if (!response.error.isNullOrBlank()) {
             container.addView(
                 TextView(this).apply {
@@ -616,16 +599,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         return container
-    }
-
-    private fun createIpDnsView(label: String, value: String): View {
-        return TextView(this).apply {
-            text = "$label: $value"
-            textSize = 12f
-            typeface = Typeface.MONOSPACE
-            setPadding(0, 2.dp, 0, 0)
-            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.md_on_surface_variant))
-        }
     }
 
     private fun displayBypass(bypass: BypassResult) {

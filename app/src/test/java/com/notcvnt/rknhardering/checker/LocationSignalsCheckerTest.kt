@@ -78,7 +78,7 @@ class LocationSignalsCheckerTest {
 
     @Test
     fun `cell lookup without location permission is reported explicitly`() {
-        val result = LocationSignalsChecker.evaluate(snapshot(fineLocationPermissionGranted = false))
+        val result = LocationSignalsChecker.evaluate(snapshot(cellLookupPermissionGranted = false))
 
         assertTrue(result.findings.any { it.description.contains("ACCESS_FINE_LOCATION") })
     }
@@ -87,7 +87,7 @@ class LocationSignalsCheckerTest {
     fun `cell lookup with no candidates is reported explicitly`() {
         val result = LocationSignalsChecker.evaluate(
             snapshot(
-                fineLocationPermissionGranted = true,
+                cellLookupPermissionGranted = true,
                 cellCandidatesCount = 0,
             ),
         )
@@ -96,33 +96,60 @@ class LocationSignalsCheckerTest {
     }
 
     @Test
+    fun `wifi permission absence is reported explicitly`() {
+        val result = LocationSignalsChecker.evaluate(snapshot(wifiPermissionGranted = false))
+
+        assertTrue(result.findings.any { it.description == "Wi-Fi scan: permissions are not granted" })
+        assertTrue(result.findings.any { it.description == "BSSID: permission is not granted" })
+    }
+
+    @Test
+    fun `wifi candidate count is surfaced`() {
+        val result = LocationSignalsChecker.evaluate(
+            snapshot(
+                wifiPermissionGranted = true,
+                wifiAccessPointCandidatesCount = 4,
+            ),
+        )
+
+        assertTrue(result.findings.any { it.description == "Wi-Fi scan candidates: 4" })
+    }
+
+    @Test
     fun `ru cell lookup adds russian markers`() {
         val result = LocationSignalsChecker.evaluate(
             snapshot(
-                fineLocationPermissionGranted = true,
+                cellLookupPermissionGranted = true,
                 cellCandidatesCount = 1,
                 cellCountryCode = "RU",
-                cellLookupSummary = "OpenCellID LTE 250-01",
+                cellLookupSummary = "BeaconDB: exact match",
             ),
         )
 
         assertTrue(result.findings.any { it.description == "cell_country_ru:true" })
         assertTrue(result.findings.any { it.description == "location_country_ru:true" })
-        assertTrue(result.findings.any { it.description.contains("OpenCellID LTE 250-01") })
+        assertTrue(result.findings.any { it.description.contains("BeaconDB: exact match") })
     }
 
     @Test
-    fun `wifi info without location permission is reported explicitly`() {
-        val result = LocationSignalsChecker.evaluate(snapshot(fineLocationPermissionGranted = false))
+    fun `coarse BeaconDB fallback does not add russian markers`() {
+        val result = LocationSignalsChecker.evaluate(
+            snapshot(
+                cellLookupPermissionGranted = true,
+                cellCandidatesCount = 1,
+                cellLookupSummary = "BeaconDB: coarse cell area fallback",
+            ),
+        )
 
-        assertTrue(result.findings.any { it.description == "BSSID: permission is not granted" })
+        assertFalse(result.findings.any { it.description == "cell_country_ru:true" })
+        assertFalse(result.findings.any { it.description == "location_country_ru:true" })
     }
 
     @Test
     fun `valid bssid is surfaced as informational finding`() {
         val result = LocationSignalsChecker.evaluate(
             snapshot(
-                fineLocationPermissionGranted = true,
+                wifiPermissionGranted = true,
                 bssid = "AA:BB:CC:DD:EE:FF",
             ),
         )
@@ -134,7 +161,7 @@ class LocationSignalsCheckerTest {
     fun `placeholder bssid is treated as unavailable`() {
         val result = LocationSignalsChecker.evaluate(
             snapshot(
-                fineLocationPermissionGranted = true,
+                wifiPermissionGranted = true,
                 bssid = "02:00:00:00:00:00",
             ),
         )
@@ -152,8 +179,10 @@ class LocationSignalsCheckerTest {
         cellCountryCode: String? = null,
         cellLookupSummary: String? = null,
         cellCandidatesCount: Int = 0,
+        wifiAccessPointCandidatesCount: Int = 0,
         bssid: String? = null,
-        fineLocationPermissionGranted: Boolean = false,
+        cellLookupPermissionGranted: Boolean = false,
+        wifiPermissionGranted: Boolean = false,
     ): LocationSignalsChecker.LocationSnapshot {
         return LocationSignalsChecker.LocationSnapshot(
             networkMcc = networkMcc,
@@ -165,8 +194,10 @@ class LocationSignalsCheckerTest {
             cellCountryCode = cellCountryCode,
             cellLookupSummary = cellLookupSummary,
             cellCandidatesCount = cellCandidatesCount,
+            wifiAccessPointCandidatesCount = wifiAccessPointCandidatesCount,
             bssid = bssid,
-            fineLocationPermissionGranted = fineLocationPermissionGranted,
+            cellLookupPermissionGranted = cellLookupPermissionGranted,
+            wifiPermissionGranted = wifiPermissionGranted,
         )
     }
 }

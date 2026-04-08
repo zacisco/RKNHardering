@@ -1,20 +1,6 @@
-import java.util.Properties
-
 plugins {
     alias(libs.plugins.android.application)
 }
-
-val localProperties = Properties().apply {
-    val localPropertiesFile = rootProject.file("local.properties")
-    if (localPropertiesFile.exists()) {
-        localPropertiesFile.inputStream().use(::load)
-    }
-}
-
-val openCellIdApiKey = localProperties
-    .getProperty("opencellid.apiKey", "")
-    .replace("\\", "\\\\")
-    .replace("\"", "\\\"")
 
 android {
     namespace = "com.notcvnt.rknhardering"
@@ -32,7 +18,6 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("String", "OPENCELLID_API_KEY", "\"$openCellIdApiKey\"")
     }
 
     buildTypes {
