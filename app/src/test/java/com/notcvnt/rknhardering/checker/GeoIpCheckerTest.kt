@@ -20,6 +20,8 @@ class GeoIpCheckerTest {
                 asn = "AS4134",
                 isProxy = false,
                 isHosting = false,
+                hostingVotes = 0,
+                hostingSources = emptyList(),
             ),
         )
 
@@ -41,6 +43,8 @@ class GeoIpCheckerTest {
                 asn = "AS12345",
                 isProxy = true,
                 isHosting = true,
+                hostingVotes = 3,
+                hostingSources = listOf("ip-api.com", "ipapi.is", "iplocate.io"),
             ),
         )
 

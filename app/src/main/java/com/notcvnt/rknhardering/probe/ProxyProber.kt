@@ -130,7 +130,8 @@ object ProxyProber {
             (
                 "CONNECT ifconfig.me:443 HTTP/1.1\r\n" +
                     "Host: ifconfig.me:443\r\n" +
-                    "Proxy-Connection: Keep-Alive\r\n" +
+                    "User-Agent: ProxyBypass/1.0\r\n" +
+                    "Proxy-Connection: keep-alive\r\n" +
                     "\r\n"
                 ).encodeToByteArray(),
         )
