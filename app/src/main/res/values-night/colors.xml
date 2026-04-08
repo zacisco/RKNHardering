@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+
+    <color name="md_primary">#FFC9C5D0</color>
+    <color name="md_on_primary">#FF312E37</color>
+    <color name="md_primary_container">#FF47434D</color>
+    <color name="md_on_primary_container">#FFE5E1EC</color>
+    <color name="md_secondary_container">#FF3F3B47</color>
+    <color name="md_on_secondary_container">#FFE4E1F0</color>
+
+    <color name="md_surface">#FF17151B</color>
+    <color name="md_surface_container">#FF24212A</color>
+    <color name="md_on_surface">#FFE8E1EB</color>
+    <color name="md_on_surface_variant">#FFCAC4D0</color>
+    <color name="md_outline_variant">#FF4B4653</color>
+
+    <color name="status_green">#FF89D998</color>
+    <color name="status_green_container">#FF193823</color>
+    <color name="status_green_on_container">#FFB6F5C0</color>
+    <color name="status_red">#FFFFB4AB</color>
+    <color name="status_red_container">#FF5A1D1B</color>
+    <color name="status_red_on_container">#FFFFDAD6</color>
+    <color name="status_amber">#FFF1CC74</color>
+    <color name="status_amber_container">#FF4B3900</color>
+    <color name="status_amber_on_container">#FFFFE7A8</color>
+
+    <color name="verdict_green">@color/status_green</color>
+    <color name="verdict_green_bg">@color/status_green_container</color>
+    <color name="verdict_yellow">@color/status_amber</color>
+    <color name="verdict_yellow_bg">@color/status_amber_container</color>
+    <color name="verdict_red">@color/status_red</color>
+    <color name="verdict_red_bg">@color/status_red_container</color>
+    <color name="finding_detected">@color/status_red</color>
+    <color name="finding_ok">@color/status_green</color>
+</resources>
