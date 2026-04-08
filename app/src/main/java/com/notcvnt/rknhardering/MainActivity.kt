@@ -327,6 +327,8 @@ class MainActivity : AppCompatActivity() {
                 val parts = finding.description.split(": ", limit = 2)
                 if (parts.size == 2) {
                     geoIpInfoSection.addView(createGeoInfoView(parts[0], parts[1]))
+                } else {
+                    geoIpInfoSection.addView(createFindingView(finding))
                 }
             }
             val hasInfo = infoFindings.isNotEmpty() && checkFindings.isNotEmpty()
@@ -438,7 +440,7 @@ class MainActivity : AppCompatActivity() {
         } else {
             iconBypass.setImageResource(R.drawable.ic_check_circle)
             statusBypass.text = "Чисто"
-            statusBypass.setTextColor(ContextCompat.getColor(this, R.color.finding_ok))
+            statusBypass.setTextColor(ContextCompat.getColor(this, R.color.status_green))
         }
 
         findingsBypass.removeAllViews()
