@@ -84,6 +84,21 @@ class VerdictEngineTest {
     }
 
     @Test
+    fun `vpn network binding override returns detected`() {
+        val verdict = VerdictEngine.evaluate(
+            geoIp = category(),
+            directSigns = category(),
+            indirectSigns = category(),
+            locationSignals = category(),
+            bypassResult = bypass(
+                evidence = listOf(evidence(EvidenceSource.VPN_NETWORK_BINDING, EvidenceConfidence.HIGH)),
+            ),
+        )
+
+        assertEquals(Verdict.DETECTED, verdict)
+    }
+
+    @Test
     fun `russian location marker plus foreign geoip returns detected`() {
         val verdict = VerdictEngine.evaluate(
             geoIp = geoCategory(true),

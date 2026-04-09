@@ -29,6 +29,7 @@ object UnderlyingNetworkProber {
         val underlyingIp: String? = null,
         val vpnNetwork: Network? = null,
         val underlyingNetwork: Network? = null,
+        val activeNetworkIsVpn: Boolean? = null,
     )
 
     private data class IpEndpoint(
@@ -48,6 +49,10 @@ object UnderlyingNetworkProber {
     @Suppress("DEPRECATION")
     suspend fun probe(context: Context): ProbeResult = withContext(Dispatchers.IO) {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val activeNetwork = cm.activeNetwork
+        val activeNetworkIsVpn = activeNetwork
+            ?.let(cm::getNetworkCapabilities)
+            ?.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
 
         val allNetworks = cm.allNetworks
         var vpnNetwork: Network? = null
@@ -64,18 +69,25 @@ object UnderlyingNetworkProber {
         }
 
         if (vpnNetwork == null) {
-            return@withContext ProbeResult(vpnActive = false, underlyingReachable = false)
+            return@withContext ProbeResult(
+                vpnActive = false,
+                underlyingReachable = false,
+                activeNetworkIsVpn = activeNetworkIsVpn,
+            )
         }
+
+        val vpnIp = fetchIpViaNetwork(vpnNetwork)
 
         if (nonVpnNetworks.isEmpty()) {
             return@withContext ProbeResult(
                 vpnActive = true,
                 underlyingReachable = false,
+                vpnIp = vpnIp,
                 vpnNetwork = vpnNetwork,
+                activeNetworkIsVpn = activeNetworkIsVpn,
             )
         }
 
-        val vpnIp = fetchIpViaNetwork(vpnNetwork)
         var underlyingIp: String? = null
         var usedNetwork: Network? = null
 
@@ -94,6 +106,7 @@ object UnderlyingNetworkProber {
             underlyingIp = underlyingIp,
             vpnNetwork = vpnNetwork,
             underlyingNetwork = usedNetwork,
+            activeNetworkIsVpn = activeNetworkIsVpn,
         )
     }
 

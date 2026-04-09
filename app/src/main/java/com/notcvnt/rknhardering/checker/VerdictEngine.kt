@@ -42,6 +42,9 @@ object VerdictEngine {
         if (bypassEvidence.any { it.source == EvidenceSource.VPN_GATEWAY_LEAK }) {
             return Verdict.DETECTED
         }
+        if (bypassEvidence.any { it.source == EvidenceSource.VPN_NETWORK_BINDING }) {
+            return Verdict.DETECTED
+        }
 
         val locationConfirmsRussia = locationSignals.findings.any {
             it.description.contains("network_mcc_ru:true") ||
