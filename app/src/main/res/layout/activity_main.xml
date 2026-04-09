@@ -507,23 +507,72 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center"
                     android:orientation="vertical"
                     android:padding="24dp">
 
-                    <ImageView
-                        android:id="@+id/iconVerdict"
-                        android:layout_width="48dp"
-                        android:layout_height="48dp"
-                        android:layout_marginBottom="12dp"
-                        android:contentDescription="verdict" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:orientation="vertical">
 
-                    <TextView
-                        android:id="@+id/textVerdict"
+                        <ImageView
+                            android:id="@+id/iconVerdict"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:layout_marginBottom="12dp"
+                            android:contentDescription="verdict" />
+
+                        <TextView
+                            android:id="@+id/textVerdict"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/textVerdictExplanation"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:gravity="center"
+                            android:lineSpacingExtra="2dp"
+                            android:textColor="?android:attr/textColorSecondary"
+                            android:textSize="14sp"
+                            android:visibility="gone" />
+                    </LinearLayout>
+
+                    <View
+                        android:id="@+id/verdictDetailsDivider"
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:layout_marginTop="16dp"
+                        android:background="?attr/colorOutlineVariant"
+                        android:visibility="gone" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnVerdictDetails"
+                        style="@style/Widget.Material3.Button.TextButton"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:textSize="20sp"
-                        android:textStyle="bold" />
+                        android:layout_gravity="center_horizontal"
+                        android:layout_marginTop="4dp"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:paddingStart="0dp"
+                        android:paddingEnd="0dp"
+                        android:text="Подробнее"
+                        android:textAllCaps="false"
+                        android:visibility="gone" />
+
+                    <LinearLayout
+                        android:id="@+id/verdictDetailsContent"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:orientation="vertical"
+                        android:visibility="gone" />
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

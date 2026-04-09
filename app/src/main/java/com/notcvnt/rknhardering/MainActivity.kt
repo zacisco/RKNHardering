@@ -36,6 +36,7 @@ import com.notcvnt.rknhardering.checker.CheckSettings
 import com.notcvnt.rknhardering.checker.VpnCheckRunner
 import com.notcvnt.rknhardering.model.BypassResult
 import com.notcvnt.rknhardering.model.CategoryResult
+import com.notcvnt.rknhardering.model.CheckResult
 import com.notcvnt.rknhardering.model.Finding
 import com.notcvnt.rknhardering.model.IpCheckerGroupResult
 import com.notcvnt.rknhardering.model.IpCheckerResponse
@@ -108,6 +109,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var findingsBypass: LinearLayout
     private lateinit var iconVerdict: ImageView
     private lateinit var textVerdict: TextView
+    private lateinit var textVerdictExplanation: TextView
+    private lateinit var btnVerdictDetails: MaterialButton
+    private lateinit var verdictDetailsDivider: View
+    private lateinit var verdictDetailsContent: LinearLayout
     private lateinit var geoIpInfoSection: LinearLayout
     private lateinit var geoIpDivider: View
     private lateinit var locationInfoSection: LinearLayout
@@ -130,6 +135,7 @@ class MainActivity : AppCompatActivity() {
     private var checkSessionCounter = 0
     private var activeCheckSessionId = 0
     private var activeCheckPrivacyMode = false
+    private var isVerdictDetailsExpanded = false
 
     private val prefs by lazy { getSharedPreferences("rknhardering_prefs", MODE_PRIVATE) }
 
@@ -220,12 +226,17 @@ class MainActivity : AppCompatActivity() {
         findingsBypass = findViewById(R.id.findingsBypass)
         iconVerdict = findViewById(R.id.iconVerdict)
         textVerdict = findViewById(R.id.textVerdict)
+        textVerdictExplanation = findViewById(R.id.textVerdictExplanation)
+        btnVerdictDetails = findViewById(R.id.btnVerdictDetails)
+        verdictDetailsDivider = findViewById(R.id.verdictDetailsDivider)
+        verdictDetailsContent = findViewById(R.id.verdictDetailsContent)
         geoIpInfoSection = findViewById(R.id.geoIpInfoSection)
         geoIpDivider = findViewById(R.id.geoIpDivider)
         locationInfoSection = findViewById(R.id.locationInfoSection)
         locationDivider = findViewById(R.id.locationDivider)
         directInfoSection = findViewById(R.id.directInfoSection)
         directDivider = findViewById(R.id.directDivider)
+        btnVerdictDetails.setOnClickListener { toggleVerdictDetails() }
         setupResultsScrollTracking()
         updateCheckControls(isRunning = false)
     }
@@ -250,11 +261,15 @@ class MainActivity : AppCompatActivity() {
     private fun requiredPermissions(): Array<String> {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             arrayOf(
+                Manifest.permission.ACCESS_COARSE_LOCATION,
                 Manifest.permission.ACCESS_FINE_LOCATION,
                 Manifest.permission.NEARBY_WIFI_DEVICES,
             )
         } else {
-            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION)
+            arrayOf(
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+                Manifest.permission.ACCESS_FINE_LOCATION,
+            )
         }
     }
 
@@ -436,13 +451,16 @@ class MainActivity : AppCompatActivity() {
         checkJob = lifecycleScope.launch {
             try {
                 showInitialLoadingCards(settings, sessionId)
-                VpnCheckRunner.run(this@MainActivity, settings) { update ->
+                val result = VpnCheckRunner.run(this@MainActivity, settings) { update ->
                     withContext(Dispatchers.Main) {
                         if (sessionId != activeCheckSessionId) return@withContext
                         handleCheckUpdate(update)
                     }
                 }
                 if (sessionId == activeCheckSessionId) {
+                    ensureCardVisible(cardVerdict, shouldAutoScroll = true)
+                    displayVerdict(result, activeCheckPrivacyMode)
+                    animateContentReveal(iconVerdict, textVerdict, textVerdictExplanation, btnVerdictDetails)
                     stopLoadingStatusAnimation()
                     updateCheckControls(isRunning = false)
                     activeCheckSessionId = 0
@@ -509,7 +527,7 @@ class MainActivity : AppCompatActivity() {
         findingsBypass.removeAllViews()
         findingsBypass.visibility = View.GONE
 
-        textVerdict.text = ""
+        clearVerdictCard()
     }
 
     private fun showInitialLoadingCards(settings: CheckSettings, sessionId: Int) {
@@ -610,9 +628,7 @@ class MainActivity : AppCompatActivity() {
                 animateContentReveal(findingsBypass)
             }
             is CheckUpdate.VerdictReady -> {
-                ensureCardVisible(cardVerdict, shouldAutoScroll = true)
-                displayVerdict(update.verdict)
-                animateContentReveal(iconVerdict, textVerdict)
+                Unit
             }
         }
     }
@@ -1386,10 +1402,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun displayVerdict(verdict: Verdict) {
+    private fun displayVerdict(result: CheckResult, privacyMode: Boolean) {
         cardVerdict.visibility = View.VISIBLE
+        isVerdictDetailsExpanded = false
 
-        when (verdict) {
+        when (result.verdict) {
             Verdict.NOT_DETECTED -> {
                 iconVerdict.setImageResource(R.drawable.ic_check_circle)
                 textVerdict.text = "Обход не выявлен"
@@ -1415,6 +1432,131 @@ class MainActivity : AppCompatActivity() {
                 )
             }
         }
+
+        bindVerdictNarrative(VerdictNarrativeBuilder.build(result, privacyMode))
+    }
+
+    private fun bindVerdictNarrative(narrative: VerdictNarrative) {
+        textVerdictExplanation.text = narrative.explanation
+        textVerdictExplanation.visibility = View.VISIBLE
+
+        verdictDetailsContent.removeAllViews()
+        addVerdictSection(
+            title = "Что это значит",
+            content = narrative.meaningRows.map(::createVerdictBulletView),
+        )
+        addVerdictSection(
+            title = "Что удалось узнать",
+            content = narrative.discoveredRows.map(::createVerdictRowView),
+        )
+        addVerdictSection(
+            title = "Почему вынесен такой вывод",
+            content = narrative.reasonRows.map(::createVerdictBulletView),
+        )
+
+        val hasDetails = verdictDetailsContent.childCount > 0
+        verdictDetailsDivider.visibility = if (hasDetails) View.VISIBLE else View.GONE
+        btnVerdictDetails.visibility = if (hasDetails) View.VISIBLE else View.GONE
+        verdictDetailsContent.visibility = if (hasDetails && isVerdictDetailsExpanded) View.VISIBLE else View.GONE
+        updateVerdictDetailsButton()
+    }
+
+    private fun addVerdictSection(title: String, content: List<View>) {
+        if (content.isEmpty()) return
+
+        if (verdictDetailsContent.childCount > 0) {
+            verdictDetailsContent.addView(
+                View(this).apply {
+                    layoutParams = LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        1.dp,
+                    ).apply {
+                        topMargin = 12.dp
+                        bottomMargin = 12.dp
+                    }
+                    setBackgroundColor(ContextCompat.getColor(this@MainActivity, R.color.md_outline_variant))
+                    alpha = 0.7f
+                },
+            )
+        }
+
+        verdictDetailsContent.addView(createVerdictSectionTitleView(title))
+        content.forEach { verdictDetailsContent.addView(it) }
+    }
+
+    private fun createVerdictSectionTitleView(title: String): View {
+        return TextView(this).apply {
+            text = title
+            textSize = 11f
+            typeface = Typeface.DEFAULT_BOLD
+            isAllCaps = true
+            letterSpacing = 0.05f
+            setPadding(0, 0, 0, 6.dp)
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.md_on_surface_variant))
+        }
+    }
+
+    private fun createVerdictBulletView(text: String): View {
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            setPadding(0, 4.dp, 0, 4.dp)
+        }
+
+        val bullet = TextView(this).apply {
+            this.text = "•"
+            textSize = 14f
+            typeface = Typeface.DEFAULT_BOLD
+            setPadding(0, 0, 8.dp, 0)
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.md_on_surface_variant))
+        }
+
+        val body = TextView(this).apply {
+            this.text = text
+            textSize = 13f
+            setLineSpacing(2.dp.toFloat(), 1f)
+            val tv = TypedValue()
+            this@MainActivity.theme.resolveAttribute(android.R.attr.textColorPrimary, tv, true)
+            if (tv.resourceId != 0) {
+                setTextColor(ContextCompat.getColor(this@MainActivity, tv.resourceId))
+            } else if (tv.type >= TypedValue.TYPE_FIRST_COLOR_INT && tv.type <= TypedValue.TYPE_LAST_COLOR_INT) {
+                setTextColor(tv.data)
+            }
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+
+        row.addView(bullet)
+        row.addView(body)
+        return row
+    }
+
+    private fun createVerdictRowView(row: NarrativeRow): View {
+        return createInfoView(row.label, row.value)
+    }
+
+    private fun clearVerdictCard() {
+        isVerdictDetailsExpanded = false
+        textVerdict.text = ""
+        textVerdictExplanation.text = ""
+        textVerdictExplanation.visibility = View.GONE
+        verdictDetailsDivider.visibility = View.GONE
+        btnVerdictDetails.visibility = View.GONE
+        btnVerdictDetails.text = "Подробнее"
+        verdictDetailsContent.removeAllViews()
+        verdictDetailsContent.visibility = View.GONE
+    }
+
+    private fun toggleVerdictDetails() {
+        if (btnVerdictDetails.visibility != View.VISIBLE) return
+        isVerdictDetailsExpanded = !isVerdictDetailsExpanded
+        verdictDetailsContent.visibility = if (isVerdictDetailsExpanded) View.VISIBLE else View.GONE
+        updateVerdictDetailsButton()
+        if (isVerdictDetailsExpanded) {
+            animateContentReveal(verdictDetailsContent)
+        }
+    }
+
+    private fun updateVerdictDetailsButton() {
+        btnVerdictDetails.text = if (isVerdictDetailsExpanded) "Скрыть детали" else "Подробнее"
     }
 
     private val Int.dp: Int

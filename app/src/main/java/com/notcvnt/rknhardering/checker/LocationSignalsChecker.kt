@@ -16,7 +16,6 @@ import android.os.Build
 import android.telephony.CellInfo
 import android.telephony.CellInfoGsm
 import android.telephony.CellInfoLte
-import android.telephony.CellInfoTdscdma
 import android.telephony.CellInfoWcdma
 import android.telephony.TelephonyManager
 import androidx.core.content.ContextCompat
@@ -165,8 +164,11 @@ object LocationSignalsChecker {
         context: Context,
         tm: TelephonyManager,
     ): List<CellLookupCandidate> {
+        if (!hasPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)) {
+            return emptyList()
+        }
         val fresh = requestFreshCellInfo(context, tm)
-        val fallback = runCatching { tm.allCellInfo.orEmpty() }.getOrDefault(emptyList())
+        val fallback = getCachedCellInfo(tm)
         return (fresh.ifEmpty { fallback })
             .mapNotNull(::toLookupCandidate)
             .distinctBy { listOf(it.radio, it.mcc, it.mnc, it.areaCode, it.cellId) }
@@ -211,12 +213,17 @@ object LocationSignalsChecker {
         } ?: emptyList()
     }
 
+    @Suppress("MissingPermission")
+    private fun getCachedCellInfo(tm: TelephonyManager): List<CellInfo> {
+        return runCatching { tm.allCellInfo.orEmpty() }.getOrDefault(emptyList())
+    }
+
     private fun toLookupCandidate(info: CellInfo): CellLookupCandidate? {
         return when (info) {
             is CellInfoGsm -> {
                 val identity = info.cellIdentity
-                val mcc = normalizeOperatorCode(identity.mccString) ?: return null
-                val mnc = normalizeOperatorCode(identity.mncString) ?: return null
+                val mcc = gsmMcc(identity) ?: return null
+                val mnc = gsmMnc(identity) ?: return null
                 val areaCode = normalizeCellValue(identity.lac) ?: return null
                 val cellId = normalizeCellValue(identity.cid) ?: return null
                 CellLookupCandidate(
@@ -232,8 +239,8 @@ object LocationSignalsChecker {
 
             is CellInfoLte -> {
                 val identity = info.cellIdentity
-                val mcc = normalizeOperatorCode(identity.mccString) ?: return null
-                val mnc = normalizeOperatorCode(identity.mncString) ?: return null
+                val mcc = lteMcc(identity) ?: return null
+                val mnc = lteMnc(identity) ?: return null
                 val areaCode = normalizeCellValue(identity.tac) ?: return null
                 val cellId = normalizeCellValue(identity.ci) ?: return null
                 CellLookupCandidate(
@@ -249,8 +256,8 @@ object LocationSignalsChecker {
 
             is CellInfoWcdma -> {
                 val identity = info.cellIdentity
-                val mcc = normalizeOperatorCode(identity.mccString) ?: return null
-                val mnc = normalizeOperatorCode(identity.mncString) ?: return null
+                val mcc = wcdmaMcc(identity) ?: return null
+                val mnc = wcdmaMnc(identity) ?: return null
                 val areaCode = normalizeCellValue(identity.lac) ?: return null
                 val cellId = normalizeCellValue(identity.cid) ?: return null
                 CellLookupCandidate(
@@ -264,7 +271,6 @@ object LocationSignalsChecker {
                 )
             }
 
-            is CellInfoTdscdma -> null
             else -> null
         }
     }
@@ -350,6 +356,61 @@ object LocationSignalsChecker {
 
     private fun normalizeOperatorCode(value: String?): String? {
         return value?.takeIf { it.isNotBlank() && it.all(Char::isDigit) }
+    }
+
+    private fun normalizeOperatorCode(value: Int): String? {
+        return value
+            .takeIf { it in 0 until Int.MAX_VALUE }
+            ?.toString()
+            ?.let(::normalizeOperatorCode)
+    }
+
+    private fun gsmMcc(identity: android.telephony.CellIdentityGsm): String? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            normalizeOperatorCode(identity.mccString)
+        } else {
+            normalizeOperatorCode(identity.mcc)
+        }
+    }
+
+    private fun gsmMnc(identity: android.telephony.CellIdentityGsm): String? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            normalizeOperatorCode(identity.mncString)
+        } else {
+            normalizeOperatorCode(identity.mnc)
+        }
+    }
+
+    private fun lteMcc(identity: android.telephony.CellIdentityLte): String? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            normalizeOperatorCode(identity.mccString)
+        } else {
+            normalizeOperatorCode(identity.mcc)
+        }
+    }
+
+    private fun lteMnc(identity: android.telephony.CellIdentityLte): String? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            normalizeOperatorCode(identity.mncString)
+        } else {
+            normalizeOperatorCode(identity.mnc)
+        }
+    }
+
+    private fun wcdmaMcc(identity: android.telephony.CellIdentityWcdma): String? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            normalizeOperatorCode(identity.mccString)
+        } else {
+            normalizeOperatorCode(identity.mcc)
+        }
+    }
+
+    private fun wcdmaMnc(identity: android.telephony.CellIdentityWcdma): String? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            normalizeOperatorCode(identity.mncString)
+        } else {
+            normalizeOperatorCode(identity.mnc)
+        }
     }
 
     private fun normalizeCellValue(value: Int): Long? {
