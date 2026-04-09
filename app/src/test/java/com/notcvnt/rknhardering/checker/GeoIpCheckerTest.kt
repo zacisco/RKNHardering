@@ -1,16 +1,24 @@
 package com.notcvnt.rknhardering.checker
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
 import com.notcvnt.rknhardering.model.EvidenceSource
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 
+@RunWith(RobolectricTestRunner::class)
 class GeoIpCheckerTest {
+
+    private val context: Context = ApplicationProvider.getApplicationContext()
 
     @Test
     fun `foreign residential ip requires review but is not detected`() {
         val result = GeoIpChecker.evaluate(
+            context,
             GeoIpChecker.GeoIpSnapshot(
                 ip = "11.22.33.44",
                 country = "China",
@@ -35,6 +43,7 @@ class GeoIpCheckerTest {
     @Test
     fun `evaluate produces exactly 5 informational findings`() {
         val result = GeoIpChecker.evaluate(
+            context,
             GeoIpChecker.GeoIpSnapshot(
                 ip = "1.2.3.4",
                 country = "Russia",
@@ -62,6 +71,7 @@ class GeoIpCheckerTest {
     @Test
     fun `evaluate info findings have detected=false and needsReview=false`() {
         val result = GeoIpChecker.evaluate(
+            context,
             GeoIpChecker.GeoIpSnapshot(
                 ip = "1.2.3.4",
                 country = "Russia",
@@ -86,6 +96,7 @@ class GeoIpCheckerTest {
     @Test
     fun `hosting or proxy still count as detected geo risk`() {
         val result = GeoIpChecker.evaluate(
+            context,
             GeoIpChecker.GeoIpSnapshot(
                 ip = "22.33.44.55",
                 country = "Russia",
@@ -95,9 +106,9 @@ class GeoIpCheckerTest {
                 asn = "AS12345",
                 isProxy = true,
                 isHosting = true,
-                hostingVotes = 3,
-                hostingChecks = 3,
-                hostingSources = listOf("ip-api.com", "ipapi.is", "iplocate.io"),
+                hostingVotes = 2,
+                hostingChecks = 2,
+                hostingSources = listOf("ipapi.is", "iplocate.io"),
             ),
         )
 
@@ -107,7 +118,7 @@ class GeoIpCheckerTest {
     }
 
     @Test
-    fun `mergeSnapshots falls back to ipapi is when ip api is unavailable`() {
+    fun `mergeSnapshots falls back to ipapi is when primary provider is unavailable`() {
         val fallback = GeoIpChecker.ProviderSnapshot(
             provider = "ipapi.is",
             snapshot = GeoIpChecker.GeoIpSnapshot(
@@ -252,6 +263,7 @@ class GeoIpCheckerTest {
     @Test
     fun `evaluate uses available hosting checks in description`() {
         val result = GeoIpChecker.evaluate(
+            context,
             GeoIpChecker.GeoIpSnapshot(
                 ip = "157.180.123.101",
                 country = "Finland",

@@ -29,8 +29,7 @@ VpnCheckRunner
 
 Источники:
 
-- `http://ip-api.com/json/` — приоритетный источник полей `status,country,countryCode,isp,org,as,proxy,hosting,query`
-- `https://api.ipapi.is/` — fallback-источник полей GeoIP и дополнительный голос за datacenter hosting (`is_datacenter`)
+- `https://api.ipapi.is/` — основной источник полей GeoIP и сигналов proxy/VPN/Tor/datacenter
 - `https://www.iplocate.io/api/lookup` — fallback-источник полей GeoIP и дополнительный голос за hosting (`privacy.is_hosting`)
 
 Логика:
@@ -38,16 +37,16 @@ VpnCheckRunner
 | Сигнал | Что делает код | Итог |
 |--------|----------------|------|
 | `countryCode != RU` | IP считается иностранным | `needsReview`, если одновременно нет `hosting` и `proxy` |
-| `hosting` | Используется majority vote по совместимым ответам одного и того же IP (`ip-api`, `ipapi.is`, `iplocate.io`) | `detected = true`, если большинство совместимых источников говорят `hosting=true` |
-| `proxy` | Если `ip-api.com` доступен, используется его поле `proxy`; если нет, используются совместимые fallback-провайдеры | `detected = true` |
-| `country`, `isp`, `org`, `as`, `query` | Берутся из `ip-api.com`, а при его недоступности собираются из `ipapi.is` / `iplocate.io` только для совместимого IP | не влияют напрямую |
+| `hosting` | Используется majority vote по совместимым ответам одного и того же IP (`ipapi.is`, `iplocate.io`) | `detected = true`, если большинство совместимых источников говорят `hosting=true` |
+| `proxy` | Используются совместимые HTTPS-провайдеры (`ipapi.is`, `iplocate.io`) | `detected = true`, если хотя бы один совместимый провайдер говорит о proxy/VPN/Tor |
+| `country`, `isp`, `org`, `as`, `query` | Берутся из `ipapi.is`, а недостающие поля заполняются из `iplocate.io` только для совместимого IP | не влияют напрямую |
 
 Итог категории:
 
 - `detected = isHosting || isProxy`
 - `needsReview = foreignIp && !isHosting && !isProxy`
 
-Таймаут соединения и чтения для HTTP-запросов: 10 секунд. Если запрос к `ip-api.com` не удался, `GeoIpChecker` пытается собрать полную карточку из `ipapi.is` и `iplocate.io`. Ошибка возвращается только если ни один GeoIP-провайдер не ответил данными.
+Таймаут соединения и чтения для HTTP(S)-запросов: 10 секунд. `GeoIpChecker` использует только HTTPS-провайдеры и возвращает ошибку только если ни один GeoIP-провайдер не ответил данными.
 
 ---
 

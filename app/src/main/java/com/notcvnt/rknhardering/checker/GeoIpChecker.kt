@@ -1,5 +1,7 @@
 package com.notcvnt.rknhardering.checker
 
+import android.content.Context
+import com.notcvnt.rknhardering.R
 import com.notcvnt.rknhardering.model.CategoryResult
 import com.notcvnt.rknhardering.model.EvidenceConfidence
 import com.notcvnt.rknhardering.model.EvidenceItem
@@ -34,69 +36,41 @@ object GeoIpChecker {
         val snapshot: GeoIpSnapshot,
     )
 
-    private const val IPAPI_PROVIDER = "ip-api.com"
     private const val IPAPIIS_PROVIDER = "ipapi.is"
     private const val IPLOCATE_PROVIDER = "iplocate.io"
-
-    private const val IPAPI_URL =
-        "http://ip-api.com/json/?fields=status,country,countryCode,isp,org,as,proxy,hosting,query"
 
     private const val IPAPIIS_URL = "https://api.ipapi.is/"
 
     private const val IPLOCATE_URL = "https://www.iplocate.io/api/lookup"
 
     suspend fun check(
+        context: Context,
         resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
     ): CategoryResult = withContext(Dispatchers.IO) {
         try {
             coroutineScope {
-                val ipApiDeferred = async { fetchIpApi(resolverConfig) }
                 val ipapiIsDeferred = async { fetchIpapiIs(resolverConfig) }
                 val iplocateDeferred = async { fetchIplocate(resolverConfig) }
 
-                val ipApiResult = ipApiDeferred.await()
                 val ipapiIsResult = ipapiIsDeferred.await()
                 val iplocateResult = iplocateDeferred.await()
 
-                val providers = listOfNotNull(ipApiResult, ipapiIsResult, iplocateResult)
-                val baseProvider = ipApiResult ?: ipapiIsResult ?: iplocateResult
-                    ?: return@coroutineScope errorResult("Ни один GeoIP-провайдер не вернул данные")
+                val providers = listOfNotNull(ipapiIsResult, iplocateResult)
+                val baseProvider = ipapiIsResult ?: iplocateResult
+                    ?: return@coroutineScope errorResult(
+                        context.getString(R.string.checker_geo_error_no_provider),
+                    )
 
                 evaluate(
-                    mergeSnapshots(
+                    context = context,
+                    snapshot = mergeSnapshots(
                         baseProvider = baseProvider,
                         providers = providers,
                     ),
                 )
             }
         } catch (e: Exception) {
-            errorResult("Не удалось получить данные GeoIP: ${e.message}")
-        }
-    }
-
-    private fun fetchIpApi(resolverConfig: DnsResolverConfig): ProviderSnapshot? {
-        return try {
-            val json = fetchJson(IPAPI_URL, resolverConfig)
-            if (json.optString("status") != "success") return null
-
-            ProviderSnapshot(
-                provider = IPAPI_PROVIDER,
-                snapshot = GeoIpSnapshot(
-                    ip = firstMeaningful(json.optString("query"), default = "N/A"),
-                    country = firstMeaningful(json.optString("country"), default = "N/A"),
-                    countryCode = firstMeaningful(json.optString("countryCode"), default = ""),
-                    isp = firstMeaningful(json.optString("isp"), default = "N/A"),
-                    org = firstMeaningful(json.optString("org"), default = "N/A"),
-                    asn = firstMeaningful(json.optString("as"), default = "N/A"),
-                    isProxy = json.optBoolean("proxy", false),
-                    isHosting = json.optBoolean("hosting", false),
-                    hostingVotes = 0,
-                    hostingChecks = 0,
-                    hostingSources = emptyList(),
-                ),
-            )
-        } catch (_: Exception) {
-            null
+            errorResult(context.getString(R.string.checker_geo_error_fetch, e.message))
         }
     }
 
@@ -243,7 +217,6 @@ object GeoIpChecker {
             org = pickField(orderedForFill) { it.snapshot.org },
             asn = pickField(orderedForFill) { it.snapshot.asn },
             isProxy = resolveProxy(
-                baseProvider = baseProvider,
                 compatibleProviders = compatibleProviders,
             ),
             isHosting = hostingVotes > hostingChecks / 2,
@@ -253,29 +226,36 @@ object GeoIpChecker {
         )
     }
 
-    internal fun evaluate(snapshot: GeoIpSnapshot): CategoryResult {
+    internal fun evaluate(context: Context, snapshot: GeoIpSnapshot): CategoryResult {
         val findings = mutableListOf<Finding>()
         val evidence = mutableListOf<EvidenceItem>()
 
-        findings.add(Finding("IP: ${snapshot.ip}", isInformational = true))
-        findings.add(Finding("Страна: ${snapshot.country} (${snapshot.countryCode})", isInformational = true))
-        findings.add(Finding("ISP: ${snapshot.isp}", isInformational = true))
-        findings.add(Finding("Организация: ${snapshot.org}", isInformational = true))
-        findings.add(Finding("ASN: ${snapshot.asn}", isInformational = true))
+        findings.add(Finding(context.getString(R.string.checker_geo_info_ip, snapshot.ip), isInformational = true))
+        findings.add(Finding(context.getString(R.string.checker_geo_info_country, snapshot.country, snapshot.countryCode), isInformational = true))
+        findings.add(Finding(context.getString(R.string.checker_geo_info_isp, snapshot.isp), isInformational = true))
+        findings.add(Finding(context.getString(R.string.checker_geo_info_org, snapshot.org), isInformational = true))
+        findings.add(Finding(context.getString(R.string.checker_geo_info_asn, snapshot.asn), isInformational = true))
 
         val foreignIp = snapshot.countryCode.isNotEmpty() && snapshot.countryCode != "RU"
         val needsReview = foreignIp && !snapshot.isHosting && !snapshot.isProxy
+        val foreignIpDesc = if (foreignIp) {
+            context.getString(R.string.checker_geo_foreign_ip_yes, snapshot.countryCode)
+        } else {
+            context.getString(R.string.checker_geo_foreign_ip_no)
+        }
         findings.add(
             Finding(
-                description = "IP вне России: ${if (foreignIp) "да (${snapshot.countryCode})" else "нет"}",
+                description = foreignIpDesc,
                 needsReview = needsReview,
                 source = EvidenceSource.GEO_IP,
                 confidence = needsReview.takeIf { it }?.let { EvidenceConfidence.LOW },
             ),
         )
 
+        val yesStr = context.getString(R.string.checker_yes)
+        val noStr = context.getString(R.string.checker_no)
         val hostingDesc = buildString {
-            append("IP принадлежит хостинг-провайдеру: ${if (snapshot.isHosting) "да" else "нет"}")
+            append(context.getString(R.string.checker_geo_hosting_prefix, if (snapshot.isHosting) yesStr else noStr))
             if (snapshot.hostingChecks > 0) {
                 append(" (${snapshot.hostingVotes}/${snapshot.hostingChecks}")
                 if (snapshot.hostingSources.isNotEmpty()) {
@@ -294,7 +274,7 @@ object GeoIpChecker {
         addGeoFinding(
             findings = findings,
             evidence = evidence,
-            description = "IP в базе известных прокси/VPN: ${if (snapshot.isProxy) "да" else "нет"}",
+            description = context.getString(R.string.checker_geo_proxy_db, if (snapshot.isProxy) yesStr else noStr),
             detected = snapshot.isProxy,
         )
 
@@ -311,7 +291,7 @@ object GeoIpChecker {
         return CategoryResult(
             name = "GeoIP",
             detected = false,
-            findings = listOf(Finding("Ошибка GeoIP: $message")),
+            findings = listOf(Finding(message, isError = true)),
         )
     }
 
@@ -341,13 +321,7 @@ object GeoIpChecker {
         }
     }
 
-    private fun resolveProxy(
-        baseProvider: ProviderSnapshot,
-        compatibleProviders: List<ProviderSnapshot>,
-    ): Boolean {
-        if (baseProvider.provider == IPAPI_PROVIDER) {
-            return baseProvider.snapshot.isProxy
-        }
+    private fun resolveProxy(compatibleProviders: List<ProviderSnapshot>): Boolean {
         return compatibleProviders.any { it.snapshot.isProxy }
     }
 

@@ -2,7 +2,7 @@
     <string name="app_name">RKNHardering</string>
     <string name="github_repo_label">GitHub</string>
     <string name="github_repo_url">https://github.com/xtclovver/RKNHardering</string>
-    <string name="run_check_notice">Во время проверки приложение выполнит сетевые запросы к доменам:\n• api.beacondb.net\n• ip-api.com\n• api.ipapi.is\n• www.iplocate.io\n• ipv4-internet.yandex.net\n• ipv6-internet.yandex.net\n• 2ip.ru\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\nЕсли в настройках выбран кастомный DNS-резолвер, приложение также будет обращаться к его IP-адресам или DoH-домену.\n\nНажимая кнопку «Запустить проверку», вы соглашаетесь, что с вашего устройства будут выполнены эти сетевые запросы.\n\nПриложение не ведет логи этих запросов. Доступ к сети можно будет отключить в настройках приложения.</string>
+    <string name="run_check_notice">Во время проверки приложение выполнит сетевые запросы к доменам:\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ipv4-internet.yandex.net\n• ipv6-internet.yandex.net\n• 2ip.ru\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\nЕсли в настройках выбран кастомный DNS-резолвер, приложение также будет обращаться к его IP-адресам или DoH-домену.\n\nНажимая кнопку «Запустить проверку», вы соглашаетесь, что с вашего устройства будут выполнены эти сетевые запросы.\n\nПриложение не ведет логи этих запросов. Доступ к сети можно будет отключить в настройках приложения.</string>
 
     <string name="settings_title">Настройки</string>
     <string name="settings_section_checks">Проверки</string>
@@ -172,4 +172,148 @@
     <string name="narrative_reason_fallback_detected">Вердикт собран из сочетания нескольких сигналов проверки.</string>
     <string name="narrative_reason_fallback_review">Сигналы частичные или противоречивые, поэтому нужен ручной разбор.</string>
     <string name="narrative_reason_fallback_clean">Решающие сигналы обхода не найдены.</string>
+
+    <!-- Checker strings -->
+    <string name="checker_yes">да</string>
+    <string name="checker_no">нет</string>
+
+    <!-- GeoIpChecker -->
+    <string name="checker_geo_error_no_provider">Ни один GeoIP-провайдер не вернул данные</string>
+    <string name="checker_geo_error_fetch">Не удалось получить данные GeoIP: %1$s</string>
+    <string name="checker_geo_info_ip">IP: %1$s</string>
+    <string name="checker_geo_info_country">Страна: %1$s (%2$s)</string>
+    <string name="checker_geo_info_isp">ISP: %1$s</string>
+    <string name="checker_geo_info_org">Организация: %1$s</string>
+    <string name="checker_geo_info_asn">ASN: %1$s</string>
+    <string name="checker_geo_foreign_ip_yes">IP вне России: да (%1$s)</string>
+    <string name="checker_geo_foreign_ip_no">IP вне России: нет</string>
+    <string name="checker_geo_hosting_prefix">IP принадлежит хостинг-провайдеру: %1$s</string>
+    <string name="checker_geo_proxy_db">IP в базе известных прокси/VPN: %1$s</string>
+
+    <!-- IpComparisonChecker -->
+    <string name="checker_ip_comp_ru_checkers">RU-чекеры</string>
+    <string name="checker_ip_comp_non_ru_checkers">Не-RU чекеры</string>
+    <string name="checker_ip_comp_summary_detected">RU и не-RU чекеры вернули разные IP: %1$s и %2$s</string>
+    <string name="checker_ip_comp_summary_family_mismatch">RU и не-RU чекеры вернули адреса разных семейств: %1$s и %2$s</string>
+    <string name="checker_ip_comp_summary_raw_mismatch">IP различаются, но данные неполные: %1$s и %2$s</string>
+    <string name="checker_ip_comp_summary_ipv4_only">Все ответившие IPv4-чекеры вернули один IP: %1$s</string>
+    <string name="checker_ip_comp_summary_all_same">Все чекеры вернули один IP: %1$s</string>
+    <string name="checker_ip_comp_summary_no_response">Не удалось получить ответ ни от одного IP-чекера</string>
+    <string name="checker_ip_comp_summary_incomplete">Сравнение неполное: часть чекеров не ответила</string>
+    <string name="checker_ip_comp_status_has_response">Есть ответ</string>
+    <string name="checker_ip_comp_status_no_response">Нет ответа</string>
+    <string name="checker_ip_comp_status_ipv6_ignored">IPv6 игнор</string>
+    <string name="checker_ip_comp_status_ipv4_ipv6">IPv4/IPv6</string>
+    <string name="checker_ip_comp_status_mismatch">Разнобой</string>
+    <string name="checker_ip_comp_status_partial">Частично</string>
+    <string name="checker_ip_comp_status_match">Совпадает</string>
+    <string name="checker_ip_comp_single_ip">IP: %1$s</string>
+    <string name="checker_ip_comp_single_error">Ошибка: %1$s</string>
+    <string name="checker_ip_comp_single_no_answer">Сервис не ответил</string>
+    <string name="checker_ip_comp_no_ip_returned">Ни один сервис не вернул IP</string>
+    <string name="checker_ip_comp_ipv6_ignored_no_ipv4">IPv6-ошибки проигнорированы, валидного IPv4-ответа нет</string>
+    <string name="checker_ip_comp_mixed_families">Сервисы вернули адреса разных семейств: %1$s</string>
+    <string name="checker_ip_comp_different_ips">Сервисы вернули разные IP: %1$s</string>
+    <string name="checker_ip_comp_partial">IP %1$s, но %2$d из %3$d сервисов не ответили</string>
+    <string name="checker_ip_comp_all_same">Все ответившие сервисы группы вернули IP %1$s</string>
+    <string name="checker_ip_comp_ipv6_ignored_suffix">; IPv6-ошибки проигнорированы: %1$d</string>
+
+    <!-- DirectSignsChecker -->
+    <string name="checker_direct_category_name">Прямые признаки</string>
+    <string name="checker_direct_no_active_network">Активная сеть не найдена</string>
+    <string name="checker_direct_caps_unavailable">NetworkCapabilities недоступны</string>
+    <string name="checker_direct_transport_vpn">TRANSPORT_VPN: %1$s</string>
+    <string name="checker_direct_detected">обнаружен</string>
+    <string name="checker_direct_not_detected">не обнаружен</string>
+    <string name="checker_direct_flag_is_vpn">Флаг IS_VPN обнаружен в capabilities</string>
+    <string name="checker_direct_vpn_transport_info">VpnTransportInfo обнаружен в транспортной информации</string>
+    <string name="checker_direct_http_proxy">HTTP прокси</string>
+    <string name="checker_direct_socks_proxy">SOCKS прокси</string>
+    <string name="checker_direct_proxy_not_configured">%1$s: не настроен</string>
+    <string name="checker_direct_proxy_endpoint">%1$s: %2$s:%3$s</string>
+    <string name="checker_direct_proxy_known_port">%1$s использует характерный порт %2$s</string>
+    <string name="checker_direct_proxy_no_valid_port">%1$s: хост найден без валидного порта</string>
+
+    <!-- IndirectSignsChecker -->
+    <string name="checker_indirect_category_name">Косвенные признаки</string>
+    <string name="checker_indirect_capability_not_vpn">Capability NOT_VPN: %1$s</string>
+    <string name="checker_indirect_present">присутствует</string>
+    <string name="checker_indirect_absent_suspicious">отсутствует (подозрительно)</string>
+    <string name="checker_indirect_no_vpn_interfaces">VPN-интерфейсы (tun/tap/wg/ppp/ipsec): не обнаружены</string>
+    <string name="checker_indirect_vpn_interface_found">VPN-интерфейс обнаружен: %1$s</string>
+    <string name="checker_indirect_interface_error">Ошибка при проверке интерфейсов: %1$s</string>
+    <string name="checker_indirect_mtu_anomaly">MTU аномалия: %1$s MTU=%2$d (&lt; 1500)</string>
+    <string name="checker_indirect_mtu_anomaly_nonstandard">MTU аномалия: нестандартный интерфейс %1$s MTU=%2$d</string>
+    <string name="checker_indirect_mtu_no_anomalies">MTU: аномалий не обнаружено</string>
+    <string name="checker_indirect_mtu_error">Ошибка при проверке MTU: %1$s</string>
+    <string name="checker_indirect_default_route_standard">Маршрут по умолчанию: %1$s (стандартный)</string>
+    <string name="checker_indirect_default_route_nonstandard">Маршрут по умолчанию через нестандартный интерфейс: %1$s</string>
+    <string name="checker_indirect_dedicated_routes">Выделенные маршруты через VPN/нестандартный интерфейс: %1$s</string>
+    <string name="checker_indirect_proc_default_route_standard">Маршрут по умолчанию (/proc/net/route): %1$s (стандартный)</string>
+    <string name="checker_indirect_proc_default_route_nonstandard">Маршрут по умолчанию (/proc/net/route) через нестандартный интерфейс: %1$s</string>
+    <string name="checker_indirect_split_tunnel_routes">Маршрутизация указывает на split tunneling: одновременно видны direct и tunnel routes</string>
+    <string name="checker_indirect_gateway_route_unavailable">Маршрут до шлюза провайдера: не удалось оценить через API Android</string>
+    <string name="checker_indirect_routing_no_anomalies">Маршрутизация: аномалий не обнаружено</string>
+    <string name="checker_indirect_dns_no_active_network">DNS: активная сеть не найдена</string>
+    <string name="checker_indirect_dns_servers_not_found">DNS серверы: не обнаружены</string>
+    <string name="checker_indirect_dns_localhost">DNS указывает на localhost: %1$s (типично для VPN/локального proxy)</string>
+    <string name="checker_indirect_dns_inherited_private">DNS: %1$s (наследуется из той же приватной подсети основной сети)</string>
+    <string name="checker_indirect_dns_private">DNS в приватной подсети: %1$s</string>
+    <string name="checker_indirect_dns_private_changed">DNS в приватной подсети: %1$s (отличается от underlying сети)</string>
+    <string name="checker_indirect_dns_replaced_vpn">DNS заменён при активном VPN: %1$s</string>
+    <string name="checker_indirect_dns_source_unknown">DNS: %1$s (источник не удалось сопоставить с underlying сетью)</string>
+    <string name="checker_indirect_dns_plain">DNS: %1$s</string>
+    <string name="checker_indirect_dns_link_local">DNS: %1$s (link-local)</string>
+    <string name="checker_indirect_proxy_tool_installed">Установлена proxy-утилита: %1$s (%2$s)</string>
+    <string name="checker_indirect_local_listener">Local listener на proxy-порту: %1$s:%2$d/%3$s</string>
+    <string name="checker_indirect_many_localhost_listeners">Обнаружено несколько localhost listeners на высоких портах: %1$d</string>
+    <string name="checker_indirect_no_proxy_technical">Дополнительные proxy-технические признаки: не обнаружены</string>
+    <string name="checker_indirect_limited_checks">Проверки процессов, iptables/pf и системных сертификатов ограничены без root/privileged access</string>
+    <string name="checker_indirect_dumpsys_vpn_unavailable">dumpsys vpn_management: недоступен</string>
+    <string name="checker_indirect_dumpsys_vpn_none">dumpsys vpn_management: активных VPN нет</string>
+    <string name="checker_indirect_dumpsys_vpn_line">VPN management: %1$s</string>
+    <string name="checker_indirect_dumpsys_vpn_error">dumpsys vpn_management: %1$s</string>
+    <string name="checker_indirect_dumpsys_service_unavailable">dumpsys activity services VpnService: недоступен</string>
+    <string name="checker_indirect_dumpsys_service_none">Активные VpnService: не обнаружены</string>
+    <string name="checker_indirect_dumpsys_service_active">VpnService активен: %1$s</string>
+    <string name="checker_indirect_dumpsys_service_error">dumpsys activity services: %1$s</string>
+
+    <!-- BypassChecker -->
+    <string name="checker_bypass_progress_port_scan_phase">Сканирование портов</string>
+    <string name="checker_bypass_progress_port_scan_detail">Поиск открытых прокси на localhost...</string>
+    <string name="checker_bypass_progress_popular_ports">Популярные порты</string>
+    <string name="checker_bypass_progress_full_scan">Полное сканирование</string>
+    <string name="checker_bypass_progress_port_detail">Порт %1$d (%2$d%%)</string>
+    <string name="checker_bypass_progress_xray_detail">Поиск gRPC API на localhost...</string>
+    <string name="checker_bypass_progress_underlying_detail">Проверка доступа к non-VPN сети...</string>
+    <string name="checker_bypass_progress_ip_phase">Проверка IP</string>
+    <string name="checker_bypass_progress_ip_detail">Получение прямого IP и IP через прокси...</string>
+    <string name="checker_bypass_progress_mtproto_detail">Проверка Telegram DC через прокси...</string>
+    <string name="checker_bypass_ip_unavailable">не удалось получить</string>
+    <string name="checker_bypass_direct_ip">Прямой IP: %1$s</string>
+    <string name="checker_bypass_proxy_ip">IP через прокси: %1$s</string>
+    <string name="checker_bypass_split_confirmed">Per-app split bypass: подтвержден (IP отличаются)</string>
+    <string name="checker_bypass_split_disabled">Per-app split отключен: IP совпадают</string>
+    <string name="checker_bypass_mtproto_reachable">MTProto-прокси: Telegram DC доступен через %1$s -> %2$s</string>
+    <string name="checker_bypass_mtproto_unreachable">MTProto probe: Telegram DC недоступен через прокси</string>
+    <string name="checker_bypass_no_open_proxy">Открытые прокси на localhost: не обнаружены</string>
+    <string name="checker_bypass_open_proxy">Открытый %1$s прокси: %2$s</string>
+    <string name="checker_bypass_open_proxy_review_suffix"> (требует подтверждения обхода)</string>
+    <string name="checker_bypass_no_xray">Xray gRPC API: не обнаружен</string>
+    <string name="checker_bypass_xray_api">Xray gRPC API: %1$s</string>
+    <string name="checker_bypass_extra_outbounds">&#160;&#160;...ещё %1$d аутбаундов</string>
+    <string name="checker_bypass_vpn_not_active">Underlying network: VPN не активен, проверка не требуется</string>
+    <string name="checker_bypass_vpn_network_binding">VPN network binding: приложение получило IP %1$s через явную привязку к VPN Network при non-VPN default сети</string>
+    <string name="checker_bypass_vpn_bound_ip">IP через явную привязку к VPN Network: %1$s</string>
+    <string name="checker_bypass_tun_probe_success">TUN активный зонд: запрос через VPN Network вернул IP %1$s (TUN — живой маршрутизируемый интерфейс)</string>
+    <string name="checker_bypass_tun_probe_failure">TUN активный зонд: запрос через VPN Network недоступен (интерфейс заблокирован или filtered)</string>
+    <string name="checker_bypass_default_non_vpn_ip">Default non-VPN IP: %1$s</string>
+    <string name="checker_bypass_underlying_unreachable">Underlying network: non-VPN сеть недоступна (full tunnel)</string>
+    <string name="checker_bypass_gateway_leak">VPN gateway leak: приложение может обойти VPN-туннель (VPN IP: %1$s, реальный IP: %2$s)</string>
+    <string name="checker_bypass_underlying_same_ip">Underlying сеть доступна, но IP совпадает с VPN%1$s: split tunnel не подтверждён</string>
+
+    <!-- InstalledVpnAppDetector -->
+    <string name="checker_vpn_known_apps_none">Известные VPN/Proxy-приложения и VpnService-провайдеры: не обнаружены</string>
+    <string name="checker_vpn_installed_app">Установлено приложение: %1$s (%2$s)</string>
+    <string name="checker_vpn_declares_service">Приложение объявляет VpnService: %1$s (%2$s)</string>
 </resources>
