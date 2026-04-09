@@ -1,10 +1,10 @@
 package com.notcvnt.rknhardering.checker
 
 import com.notcvnt.rknhardering.BuildConfig
+import com.notcvnt.rknhardering.network.DnsResolverConfig
+import com.notcvnt.rknhardering.network.ResolverNetworkStack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.net.HttpURLConnection
-import java.net.URL
 import java.util.Locale
 
 internal data class CellLookupCandidate(
@@ -32,9 +32,10 @@ internal data class CellLookupResult(
 
 internal class BeaconDbClient(
     private val countryResolver: (Double, Double) -> String?,
+    private val resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
     private val userAgent: String = "RKNHardering/${BuildConfig.VERSION_NAME}",
     private val request: suspend (String, String, String) -> HttpResult = { url, body, agent ->
-        defaultRequest(url, body, agent)
+        defaultRequest(url, body, agent, resolverConfig)
     },
 ) {
 
@@ -218,26 +219,26 @@ internal class BeaconDbClient(
             return Regex("\"$name\"\\s*:\\s*\"([^\"]+)\"")
         }
 
-        private fun defaultRequest(url: String, body: String, userAgent: String): HttpResult {
-            val connection = URL(url).openConnection() as HttpURLConnection
-            connection.connectTimeout = 8_000
-            connection.readTimeout = 8_000
-            connection.requestMethod = "POST"
-            connection.doOutput = true
-            connection.setRequestProperty("Accept", "application/json")
-            connection.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            connection.setRequestProperty("User-Agent", userAgent)
-            return try {
-                connection.outputStream.use { output ->
-                    output.write(body.toByteArray(Charsets.UTF_8))
-                }
-                val code = connection.responseCode
-                val stream = if (code in 200..299) connection.inputStream else connection.errorStream
-                val responseBody = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
-                HttpResult(code = code, body = responseBody)
-            } finally {
-                connection.disconnect()
-            }
+        private fun defaultRequest(
+            url: String,
+            body: String,
+            userAgent: String,
+            resolverConfig: DnsResolverConfig,
+        ): HttpResult {
+            val response = ResolverNetworkStack.execute(
+                url = url,
+                method = "POST",
+                headers = mapOf(
+                    "Accept" to "application/json",
+                    "Content-Type" to "application/json; charset=utf-8",
+                    "User-Agent" to userAgent,
+                ),
+                body = body,
+                bodyContentType = "application/json; charset=utf-8",
+                timeoutMs = 8_000,
+                config = resolverConfig,
+            )
+            return HttpResult(code = response.code, body = response.body)
         }
     }
 }

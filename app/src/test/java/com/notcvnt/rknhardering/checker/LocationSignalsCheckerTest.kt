@@ -2,6 +2,7 @@ package com.notcvnt.rknhardering.checker
 
 import com.notcvnt.rknhardering.model.EvidenceConfidence
 import com.notcvnt.rknhardering.model.EvidenceSource
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -57,6 +58,19 @@ class LocationSignalsCheckerTest {
                 it.source == EvidenceSource.LOCATION_SIGNALS && it.confidence == EvidenceConfidence.LOW
             },
         )
+    }
+
+    @Test
+    fun `plmn fields are marked as informational`() {
+        val result = LocationSignalsChecker.evaluate(snapshot())
+
+        val infoFindings = result.findings.filter { it.isInformational }
+        assertEquals(4, infoFindings.size)
+        assertTrue(infoFindings.any { it.description.startsWith("Network operator:") })
+        assertTrue(infoFindings.any { it.description.startsWith("Network MCC:") })
+        assertTrue(infoFindings.any { it.description.startsWith("SIM MCC:") })
+        assertTrue(infoFindings.any { it.description.startsWith("Roaming:") })
+        assertFalse(result.findings.any { it.description.startsWith("Cell lookup") && it.isInformational })
     }
 
     @Test

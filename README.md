@@ -29,25 +29,25 @@ VpnCheckRunner
 
 Источники:
 
-- `http://ip-api.com/json/` — основной источник полей `status,country,countryCode,isp,org,as,proxy,hosting,query`
-- `https://api.ipapi.is/` — дополнительный голос за datacenter hosting (`is_datacenter`)
-- `https://www.iplocate.io/api/lookup` — дополнительный голос за hosting (`privacy.is_hosting`)
+- `http://ip-api.com/json/` — приоритетный источник полей `status,country,countryCode,isp,org,as,proxy,hosting,query`
+- `https://api.ipapi.is/` — fallback-источник полей GeoIP и дополнительный голос за datacenter hosting (`is_datacenter`)
+- `https://www.iplocate.io/api/lookup` — fallback-источник полей GeoIP и дополнительный голос за hosting (`privacy.is_hosting`)
 
 Логика:
 
 | Сигнал | Что делает код | Итог |
 |--------|----------------|------|
 | `countryCode != RU` | IP считается иностранным | `needsReview`, если одновременно нет `hosting` и `proxy` |
-| `hosting` | Используется majority vote `2 из 3` (`ip-api`, `ipapi.is`, `iplocate.io`) | `detected = true` |
-| `proxy` | Берётся из `ip-api.com` | `detected = true` |
-| `country`, `isp`, `org`, `as`, `query` | Выводятся как информационные поля | не влияют напрямую |
+| `hosting` | Используется majority vote по совместимым ответам одного и того же IP (`ip-api`, `ipapi.is`, `iplocate.io`) | `detected = true`, если большинство совместимых источников говорят `hosting=true` |
+| `proxy` | Если `ip-api.com` доступен, используется его поле `proxy`; если нет, используются совместимые fallback-провайдеры | `detected = true` |
+| `country`, `isp`, `org`, `as`, `query` | Берутся из `ip-api.com`, а при его недоступности собираются из `ipapi.is` / `iplocate.io` только для совместимого IP | не влияют напрямую |
 
 Итог категории:
 
 - `detected = isHosting || isProxy`
 - `needsReview = foreignIp && !isHosting && !isProxy`
 
-Таймаут соединения и чтения для HTTP-запросов: 10 секунд. Если основной запрос к `ip-api.com` не удался, категория возвращается без детекта.
+Таймаут соединения и чтения для HTTP-запросов: 10 секунд. Если запрос к `ip-api.com` не удался, `GeoIpChecker` пытается собрать полную карточку из `ipapi.is` и `iplocate.io`. Ошибка возвращается только если ни один GeoIP-провайдер не ответил данными.
 
 ---
 

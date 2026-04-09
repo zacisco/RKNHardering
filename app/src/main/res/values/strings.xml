@@ -2,7 +2,7 @@
     <string name="app_name">RKNHardering</string>
     <string name="github_repo_label">GitHub</string>
     <string name="github_repo_url">https://github.com/xtclovver/RKNHardering</string>
-    <string name="run_check_notice">Во время проверки приложение выполнит сетевые запросы к доменам:\n• api.beacondb.net\n• ip-api.com\n• api.ipapi.is\n• www.iplocate.io\n• ipv4-internet.yandex.net\n• ipv6-internet.yandex.net\n• 2ip.ru\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\nНажимая кнопку «Запустить проверку», вы соглашаетесь, что с вашего устройства будут выполнены запросы к этим доменам.\n\nПриложение не ведет логи этих запросов. Доступ к сети можно будет отключить в настройках приложения.</string>
+    <string name="run_check_notice">Во время проверки приложение выполнит сетевые запросы к доменам:\n• api.beacondb.net\n• ip-api.com\n• api.ipapi.is\n• www.iplocate.io\n• ipv4-internet.yandex.net\n• ipv6-internet.yandex.net\n• 2ip.ru\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\nЕсли в настройках выбран кастомный DNS-резолвер, приложение также будет обращаться к его IP-адресам или DoH-домену.\n\nНажимая кнопку «Запустить проверку», вы соглашаетесь, что с вашего устройства будут выполнены эти сетевые запросы.\n\nПриложение не ведет логи этих запросов. Доступ к сети можно будет отключить в настройках приложения.</string>
 
     <string name="settings_title">Настройки</string>
     <string name="settings_section_checks">Проверки</string>
@@ -22,6 +22,21 @@
     <string name="settings_network_disable_title">Отключить сетевые запросы?</string>
     <string name="settings_network_disable_message">При отключении:\n\n• GeoIP проверка не будет выполнена\n• Сравнение IP-адресов через внешние сервисы отключится\n• Геолокация через BeaconDB (вышки/Wi-Fi) отключится\n\nБудут работать только локальные проверки: прямые признаки, косвенные признаки, сканирование портов</string>
     <string name="settings_network_disable_confirm">Отключить</string>
+    <string name="settings_dns_resolver">DNS-резолвер</string>
+    <string name="settings_dns_resolver_desc">Применяется к GeoIP, IP Comparison и BeaconDB. Не меняет системный DNS Android и не влияет на локальные DNS-проверки.</string>
+    <string name="settings_dns_mode_system">Системный</string>
+    <string name="settings_dns_mode_direct">Direct DNS</string>
+    <string name="settings_dns_mode_doh">DoH</string>
+    <string name="settings_dns_preset_custom">Свой</string>
+    <string name="settings_dns_preset_cloudflare">Cloudflare</string>
+    <string name="settings_dns_preset_google">Google</string>
+    <string name="settings_dns_preset_yandex">Yandex</string>
+    <string name="settings_dns_direct_servers">DNS-серверы</string>
+    <string name="settings_dns_direct_servers_hint">1.1.1.1, 1.0.0.1</string>
+    <string name="settings_dns_doh_url">DoH URL</string>
+    <string name="settings_dns_doh_url_hint">https://dns.google/dns-query</string>
+    <string name="settings_dns_bootstrap">Bootstrap IPs</string>
+    <string name="settings_dns_bootstrap_hint">8.8.8.8, 8.8.4.4</string>
     <string name="settings_privacy_mode">Приватный режим</string>
     <string name="settings_privacy_mode_desc">IP отображается как 185.22.*.*</string>
     <string name="settings_theme">Тема</string>

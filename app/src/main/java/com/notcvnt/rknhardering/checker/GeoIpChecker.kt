@@ -5,13 +5,13 @@ import com.notcvnt.rknhardering.model.EvidenceConfidence
 import com.notcvnt.rknhardering.model.EvidenceItem
 import com.notcvnt.rknhardering.model.EvidenceSource
 import com.notcvnt.rknhardering.model.Finding
+import com.notcvnt.rknhardering.network.DnsResolverConfig
+import com.notcvnt.rknhardering.network.ResolverNetworkStack
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
-import java.net.HttpURLConnection
-import java.net.URL
 
 object GeoIpChecker {
 
@@ -23,49 +23,49 @@ object GeoIpChecker {
         val org: String,
         val asn: String,
         val isProxy: Boolean,
-        // true if majority of sources say hosting
         val isHosting: Boolean,
-        // how many sources voted hosting (out of 3)
         val hostingVotes: Int,
+        val hostingChecks: Int,
         val hostingSources: List<String>,
     )
+
+    internal data class ProviderSnapshot(
+        val provider: String,
+        val snapshot: GeoIpSnapshot,
+    )
+
+    private const val IPAPI_PROVIDER = "ip-api.com"
+    private const val IPAPIIS_PROVIDER = "ipapi.is"
+    private const val IPLOCATE_PROVIDER = "iplocate.io"
 
     private const val IPAPI_URL =
         "http://ip-api.com/json/?fields=status,country,countryCode,isp,org,as,proxy,hosting,query"
 
-    // https://api.ipapi.is/ — returns is_datacenter: bool for current IP
     private const val IPAPIIS_URL = "https://api.ipapi.is/"
 
-    // https://www.iplocate.io/api/lookup — returns privacy.is_hosting: bool for current IP
     private const val IPLOCATE_URL = "https://www.iplocate.io/api/lookup"
 
-    suspend fun check(): CategoryResult = withContext(Dispatchers.IO) {
+    suspend fun check(
+        resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
+    ): CategoryResult = withContext(Dispatchers.IO) {
         try {
             coroutineScope {
-                val ipapiDeferred = async { fetchIpApi() }
-                val ipapiIsDeferred = async { fetchIpapiIs() }
-                val iplocateDeferred = async { fetchIplocate() }
+                val ipApiDeferred = async { fetchIpApi(resolverConfig) }
+                val ipapiIsDeferred = async { fetchIpapiIs(resolverConfig) }
+                val iplocateDeferred = async { fetchIplocate(resolverConfig) }
 
-                val ipapiResult = ipapiDeferred.await()
-                    ?: return@coroutineScope errorResult("ip-api вернул ошибку")
+                val ipApiResult = ipApiDeferred.await()
+                val ipapiIsResult = ipapiIsDeferred.await()
+                val iplocateResult = iplocateDeferred.await()
 
-                val ipapiIsHosting = ipapiIsDeferred.await()
-                val iplocateHosting = iplocateDeferred.await()
-
-                val votes = listOf(
-                    ipapiResult.isHosting to "ip-api.com",
-                    ipapiIsHosting to "ipapi.is",
-                    iplocateHosting to "iplocate.io",
-                )
-                val hostingVotes = votes.count { it.first }
-                val hostingSources = votes.filter { it.first }.map { it.second }
-                val hostingByVoting = hostingVotes >= 2
+                val providers = listOfNotNull(ipApiResult, ipapiIsResult, iplocateResult)
+                val baseProvider = ipApiResult ?: ipapiIsResult ?: iplocateResult
+                    ?: return@coroutineScope errorResult("Ни один GeoIP-провайдер не вернул данные")
 
                 evaluate(
-                    ipapiResult.copy(
-                        isHosting = hostingByVoting,
-                        hostingVotes = hostingVotes,
-                        hostingSources = hostingSources,
+                    mergeSnapshots(
+                        baseProvider = baseProvider,
+                        providers = providers,
                     ),
                 )
             }
@@ -74,68 +74,194 @@ object GeoIpChecker {
         }
     }
 
-    private fun fetchIpApi(): GeoIpSnapshot? {
+    private fun fetchIpApi(resolverConfig: DnsResolverConfig): ProviderSnapshot? {
         return try {
-            val json = fetchJson(IPAPI_URL)
+            val json = fetchJson(IPAPI_URL, resolverConfig)
             if (json.optString("status") != "success") return null
-            GeoIpSnapshot(
-                ip = json.optString("query", "N/A"),
-                country = json.optString("country", "N/A"),
-                countryCode = json.optString("countryCode", ""),
-                isp = json.optString("isp", "N/A"),
-                org = json.optString("org", "N/A"),
-                asn = json.optString("as", "N/A"),
-                isProxy = json.optBoolean("proxy", false),
-                isHosting = json.optBoolean("hosting", false),
-                hostingVotes = 0,
-                hostingSources = emptyList(),
+
+            ProviderSnapshot(
+                provider = IPAPI_PROVIDER,
+                snapshot = GeoIpSnapshot(
+                    ip = firstMeaningful(json.optString("query"), default = "N/A"),
+                    country = firstMeaningful(json.optString("country"), default = "N/A"),
+                    countryCode = firstMeaningful(json.optString("countryCode"), default = ""),
+                    isp = firstMeaningful(json.optString("isp"), default = "N/A"),
+                    org = firstMeaningful(json.optString("org"), default = "N/A"),
+                    asn = firstMeaningful(json.optString("as"), default = "N/A"),
+                    isProxy = json.optBoolean("proxy", false),
+                    isHosting = json.optBoolean("hosting", false),
+                    hostingVotes = 0,
+                    hostingChecks = 0,
+                    hostingSources = emptyList(),
+                ),
             )
         } catch (_: Exception) {
             null
         }
     }
 
-    // Returns is_datacenter field
-    private fun fetchIpapiIs(): Boolean {
+    private fun fetchIpapiIs(resolverConfig: DnsResolverConfig): ProviderSnapshot? {
         return try {
-            val json = fetchJson(IPAPIIS_URL)
-            json.optBoolean("is_datacenter", false)
+            val json = fetchJson(IPAPIIS_URL, resolverConfig)
+            if (!json.has("ip")) return null
+
+            val location = json.optJSONObject("location")
+            val company = json.optJSONObject("company")
+            val datacenter = json.optJSONObject("datacenter")
+            val asn = json.optJSONObject("asn")
+
+            ProviderSnapshot(
+                provider = IPAPIIS_PROVIDER,
+                snapshot = GeoIpSnapshot(
+                    ip = firstMeaningful(json.optString("ip"), default = "N/A"),
+                    country = firstMeaningful(location?.optString("country"), default = "N/A"),
+                    countryCode = firstMeaningful(location?.optString("country_code"), default = ""),
+                    isp = firstMeaningful(
+                        company?.optString("name"),
+                        asn?.optString("org"),
+                        datacenter?.optString("datacenter"),
+                        asn?.optString("descr"),
+                        default = "N/A",
+                    ),
+                    org = firstMeaningful(
+                        datacenter?.optString("datacenter"),
+                        company?.optString("name"),
+                        asn?.optString("org"),
+                        asn?.optString("descr"),
+                        default = "N/A",
+                    ),
+                    asn = formatAsn(
+                        code = asn?.opt("asn")?.toString(),
+                        name = firstMeaningful(
+                            asn?.optString("org"),
+                            asn?.optString("descr"),
+                            default = "N/A",
+                        ),
+                    ),
+                    isProxy = json.optBoolean("is_proxy", false) ||
+                        json.optBoolean("is_vpn", false) ||
+                        json.optBoolean("is_tor", false),
+                    isHosting = json.optBoolean("is_datacenter", false),
+                    hostingVotes = 0,
+                    hostingChecks = 0,
+                    hostingSources = emptyList(),
+                ),
+            )
         } catch (_: Exception) {
-            false
+            null
         }
     }
 
-    // Returns privacy.is_hosting field
-    private fun fetchIplocate(): Boolean {
+    private fun fetchIplocate(resolverConfig: DnsResolverConfig): ProviderSnapshot? {
         return try {
-            val json = fetchJson(IPLOCATE_URL)
-            json.optJSONObject("privacy")?.optBoolean("is_hosting", false) ?: false
+            val json = fetchJson(IPLOCATE_URL, resolverConfig)
+            if (!json.has("ip")) return null
+
+            val privacy = json.optJSONObject("privacy")
+            val company = json.optJSONObject("company")
+            val hosting = json.optJSONObject("hosting")
+            val asn = json.optJSONObject("asn")
+
+            ProviderSnapshot(
+                provider = IPLOCATE_PROVIDER,
+                snapshot = GeoIpSnapshot(
+                    ip = firstMeaningful(json.optString("ip"), default = "N/A"),
+                    country = firstMeaningful(json.optString("country"), default = "N/A"),
+                    countryCode = firstMeaningful(json.optString("country_code"), default = ""),
+                    isp = firstMeaningful(
+                        company?.optString("name"),
+                        asn?.optString("name"),
+                        hosting?.optString("provider"),
+                        default = "N/A",
+                    ),
+                    org = firstMeaningful(
+                        hosting?.optString("provider"),
+                        company?.optString("name"),
+                        asn?.optString("name"),
+                        default = "N/A",
+                    ),
+                    asn = formatAsn(
+                        code = asn?.optString("asn"),
+                        name = firstMeaningful(asn?.optString("name"), default = "N/A"),
+                    ),
+                    isProxy = (privacy?.optBoolean("is_proxy", false) == true) ||
+                        (privacy?.optBoolean("is_vpn", false) == true) ||
+                        (privacy?.optBoolean("is_tor", false) == true),
+                    isHosting = privacy?.optBoolean("is_hosting", false) == true,
+                    hostingVotes = 0,
+                    hostingChecks = 0,
+                    hostingSources = emptyList(),
+                ),
+            )
         } catch (_: Exception) {
-            false
+            null
         }
     }
 
-    private fun fetchJson(url: String): JSONObject {
-        val connection = URL(url).openConnection() as HttpURLConnection
-        connection.connectTimeout = 10_000
-        connection.readTimeout = 10_000
-        try {
-            val body = connection.inputStream.bufferedReader().readText()
-            return JSONObject(body)
-        } finally {
-            connection.disconnect()
+    private fun fetchJson(url: String, resolverConfig: DnsResolverConfig): JSONObject {
+        val response = ResolverNetworkStack.execute(
+            url = url,
+            method = "GET",
+            timeoutMs = 10_000,
+            config = resolverConfig,
+        )
+        if (response.code !in 200..299) {
+            throw IllegalStateException("HTTP ${response.code}")
         }
+        return JSONObject(response.body)
+    }
+
+    internal fun mergeSnapshots(
+        baseProvider: ProviderSnapshot,
+        providers: List<ProviderSnapshot>,
+    ): GeoIpSnapshot {
+        val compatibleProviders = providers.filter {
+            isCompatibleIp(
+                expectedIp = baseProvider.snapshot.ip,
+                candidateIp = it.snapshot.ip,
+            )
+        }
+
+        val orderedForFill = buildList {
+            add(baseProvider)
+            compatibleProviders
+                .filterNot { it.provider == baseProvider.provider }
+                .forEach(::add)
+        }
+
+        val hostingVotes = compatibleProviders.count { it.snapshot.isHosting }
+        val hostingChecks = compatibleProviders.size
+        val hostingSources = compatibleProviders
+            .filter { it.snapshot.isHosting }
+            .map { it.provider }
+
+        return GeoIpSnapshot(
+            ip = pickField(orderedForFill) { it.snapshot.ip },
+            country = pickField(orderedForFill) { it.snapshot.country },
+            countryCode = pickField(orderedForFill, default = "") { it.snapshot.countryCode },
+            isp = pickField(orderedForFill) { it.snapshot.isp },
+            org = pickField(orderedForFill) { it.snapshot.org },
+            asn = pickField(orderedForFill) { it.snapshot.asn },
+            isProxy = resolveProxy(
+                baseProvider = baseProvider,
+                compatibleProviders = compatibleProviders,
+            ),
+            isHosting = hostingVotes > hostingChecks / 2,
+            hostingVotes = hostingVotes,
+            hostingChecks = hostingChecks,
+            hostingSources = hostingSources,
+        )
     }
 
     internal fun evaluate(snapshot: GeoIpSnapshot): CategoryResult {
         val findings = mutableListOf<Finding>()
         val evidence = mutableListOf<EvidenceItem>()
 
-        findings.add(Finding("IP: ${snapshot.ip}"))
-        findings.add(Finding("Страна: ${snapshot.country} (${snapshot.countryCode})"))
-        findings.add(Finding("ISP: ${snapshot.isp}"))
-        findings.add(Finding("Организация: ${snapshot.org}"))
-        findings.add(Finding("ASN: ${snapshot.asn}"))
+        findings.add(Finding("IP: ${snapshot.ip}", isInformational = true))
+        findings.add(Finding("Страна: ${snapshot.country} (${snapshot.countryCode})", isInformational = true))
+        findings.add(Finding("ISP: ${snapshot.isp}", isInformational = true))
+        findings.add(Finding("Организация: ${snapshot.org}", isInformational = true))
+        findings.add(Finding("ASN: ${snapshot.asn}", isInformational = true))
 
         val foreignIp = snapshot.countryCode.isNotEmpty() && snapshot.countryCode != "RU"
         val needsReview = foreignIp && !snapshot.isHosting && !snapshot.isProxy
@@ -150,8 +276,8 @@ object GeoIpChecker {
 
         val hostingDesc = buildString {
             append("IP принадлежит хостинг-провайдеру: ${if (snapshot.isHosting) "да" else "нет"}")
-            if (snapshot.hostingVotes > 0 || snapshot.hostingSources.isNotEmpty()) {
-                append(" (${snapshot.hostingVotes}/3")
+            if (snapshot.hostingChecks > 0) {
+                append(" (${snapshot.hostingVotes}/${snapshot.hostingChecks}")
                 if (snapshot.hostingSources.isNotEmpty()) {
                     append(": ")
                     append(snapshot.hostingSources.joinToString(", "))
@@ -213,5 +339,62 @@ object GeoIpChecker {
                 ),
             )
         }
+    }
+
+    private fun resolveProxy(
+        baseProvider: ProviderSnapshot,
+        compatibleProviders: List<ProviderSnapshot>,
+    ): Boolean {
+        if (baseProvider.provider == IPAPI_PROVIDER) {
+            return baseProvider.snapshot.isProxy
+        }
+        return compatibleProviders.any { it.snapshot.isProxy }
+    }
+
+    private fun pickField(
+        providers: List<ProviderSnapshot>,
+        default: String = "N/A",
+        selector: (ProviderSnapshot) -> String,
+    ): String {
+        return providers
+            .asSequence()
+            .map(selector)
+            .firstOrNull(::isMeaningfulField)
+            ?: default
+    }
+
+    private fun isCompatibleIp(expectedIp: String, candidateIp: String): Boolean {
+        if (!isMeaningfulField(expectedIp) || !isMeaningfulField(candidateIp)) {
+            return true
+        }
+        return expectedIp.equals(candidateIp, ignoreCase = true)
+    }
+
+    private fun formatAsn(code: String?, name: String?): String {
+        val normalizedCode = code
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+        val normalizedName = name
+            ?.trim()
+            ?.takeIf(::isMeaningfulField)
+
+        if (normalizedCode == null) {
+            return normalizedName ?: "N/A"
+        }
+
+        val asnCode = if (normalizedCode.startsWith("AS", ignoreCase = true)) {
+            normalizedCode.uppercase()
+        } else {
+            "AS$normalizedCode"
+        }
+        return normalizedName?.let { "$asnCode $it" } ?: asnCode
+    }
+
+    private fun firstMeaningful(vararg candidates: String?, default: String): String {
+        return candidates.firstOrNull(::isMeaningfulField)?.trim() ?: default
+    }
+
+    private fun isMeaningfulField(value: String?): Boolean {
+        return !value.isNullOrBlank() && !value.equals("N/A", ignoreCase = true)
     }
 }

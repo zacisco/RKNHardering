@@ -6,12 +6,14 @@ import com.notcvnt.rknhardering.model.CategoryResult
 import com.notcvnt.rknhardering.model.CheckResult
 import com.notcvnt.rknhardering.model.IpCheckerGroupResult
 import com.notcvnt.rknhardering.model.IpComparisonResult
+import com.notcvnt.rknhardering.network.DnsResolverConfig
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
 data class CheckSettings(
     val splitTunnelEnabled: Boolean = true,
     val networkRequestsEnabled: Boolean = true,
+    val resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
     val portRange: String = "full",
     val portRangeStart: Int = 1024,
     val portRangeEnd: Int = 65535,
@@ -25,17 +27,21 @@ object VpnCheckRunner {
         onBypassProgress: (suspend (BypassChecker.Progress) -> Unit)? = null,
     ): CheckResult = coroutineScope {
         val geoIpDeferred = if (settings.networkRequestsEnabled) {
-            async { GeoIpChecker.check() }
+            async { GeoIpChecker.check(settings.resolverConfig) }
         } else null
 
         val ipComparisonDeferred = if (settings.networkRequestsEnabled) {
-            async { IpComparisonChecker.check() }
+            async { IpComparisonChecker.check(resolverConfig = settings.resolverConfig) }
         } else null
 
         val directDeferred = async { DirectSignsChecker.check(context) }
         val indirectDeferred = async { IndirectSignsChecker.check(context) }
         val locationDeferred = async {
-            LocationSignalsChecker.check(context, networkRequestsEnabled = settings.networkRequestsEnabled)
+            LocationSignalsChecker.check(
+                context,
+                networkRequestsEnabled = settings.networkRequestsEnabled,
+                resolverConfig = settings.resolverConfig,
+            )
         }
         val bypassDeferred = if (settings.splitTunnelEnabled) {
             async {

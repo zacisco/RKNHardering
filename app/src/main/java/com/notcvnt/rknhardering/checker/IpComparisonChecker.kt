@@ -4,6 +4,7 @@ import com.notcvnt.rknhardering.model.IpCheckerGroupResult
 import com.notcvnt.rknhardering.model.IpCheckerResponse
 import com.notcvnt.rknhardering.model.IpCheckerScope
 import com.notcvnt.rknhardering.model.IpComparisonResult
+import com.notcvnt.rknhardering.network.DnsResolverConfig
 import com.notcvnt.rknhardering.probe.PublicIpClient
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -73,12 +74,15 @@ object IpComparisonChecker {
         ),
     )
 
-    suspend fun check(timeoutMs: Int = 7000): IpComparisonResult = withContext(Dispatchers.IO) {
+    suspend fun check(
+        timeoutMs: Int = 7000,
+        resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
+    ): IpComparisonResult = withContext(Dispatchers.IO) {
         coroutineScope {
             val responses = ENDPOINTS.map { endpoint ->
                 async {
-                    val dnsRecords = PublicIpClient.resolveDnsRecords(endpoint.url)
-                    val result = PublicIpClient.fetchIp(endpoint.url, timeoutMs)
+                    val dnsRecords = PublicIpClient.resolveDnsRecords(endpoint.url, resolverConfig)
+                    val result = PublicIpClient.fetchIp(endpoint.url, timeoutMs, resolverConfig = resolverConfig)
                     val error = result.exceptionOrNull()?.let(::formatError)
                     IpCheckerResponse(
                         label = endpoint.label,

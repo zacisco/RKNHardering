@@ -48,7 +48,10 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(project(":xray-protos"))
     implementation(libs.grpc.okhttp)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.dnsoverhttps)
     testImplementation(libs.junit)
+    testImplementation(libs.okhttp.mockwebserver)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }

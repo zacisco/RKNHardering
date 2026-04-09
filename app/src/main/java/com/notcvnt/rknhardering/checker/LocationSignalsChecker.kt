@@ -25,12 +25,15 @@ import com.notcvnt.rknhardering.model.EvidenceConfidence
 import com.notcvnt.rknhardering.model.EvidenceItem
 import com.notcvnt.rknhardering.model.EvidenceSource
 import com.notcvnt.rknhardering.model.Finding
+import com.notcvnt.rknhardering.network.DnsResolverConfig
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.Locale
-import kotlin.coroutines.resume
 
 object LocationSignalsChecker {
 
@@ -57,11 +60,19 @@ object LocationSignalsChecker {
     private const val MAX_CELL_TOWERS = 6
     private const val MAX_WIFI_ACCESS_POINTS = 12
 
-    suspend fun check(context: Context, networkRequestsEnabled: Boolean = true): CategoryResult = withContext(Dispatchers.IO) {
-        evaluate(collectSnapshot(context, networkRequestsEnabled))
+    suspend fun check(
+        context: Context,
+        networkRequestsEnabled: Boolean = true,
+        resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
+    ): CategoryResult = withContext(Dispatchers.IO) {
+        evaluate(collectSnapshot(context, networkRequestsEnabled, resolverConfig))
     }
 
-    private suspend fun collectSnapshot(context: Context, networkRequestsEnabled: Boolean): LocationSnapshot {
+    private suspend fun collectSnapshot(
+        context: Context,
+        networkRequestsEnabled: Boolean,
+        resolverConfig: DnsResolverConfig,
+    ): LocationSnapshot {
         val fineLocationGranted = hasPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
         val nearbyWifiGranted = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             hasPermission(context, Manifest.permission.NEARBY_WIFI_DEVICES)
@@ -113,7 +124,7 @@ object LocationSignalsChecker {
         if ((cellLookupPermissionGranted || wifiPermissionGranted) && networkRequestsEnabled) {
             val lookup = BeaconDbClient(countryResolver = { lat, lon ->
                 reverseGeocodeCountry(context, lat, lon)
-            }).lookup(cellCandidates, wifiCandidates)
+            }, resolverConfig = resolverConfig).lookup(cellCandidates, wifiCandidates)
             cellCountryCode = lookup.countryCode
             cellLookupSummary = buildString {
                 append(lookup.summary)
@@ -177,21 +188,24 @@ object LocationSignalsChecker {
 
         return withTimeoutOrNull(CELL_INFO_TIMEOUT_MS) {
             suspendCancellableCoroutine { continuation ->
+                val completed = AtomicBoolean(false)
                 val requested = runCatching {
                     tm.requestCellInfoUpdate(
                         context.mainExecutor,
                         object : TelephonyManager.CellInfoCallback() {
                             override fun onCellInfo(cellInfo: MutableList<CellInfo>) {
-                                if (continuation.isActive) {
-                                    continuation.resume(cellInfo.toList())
-                                }
+                                resumeOnce(continuation, completed, cellInfo.toList())
                             }
                         },
                     )
                 }.isSuccess
 
-                if (!requested && continuation.isActive) {
-                    continuation.resume(emptyList())
+                continuation.invokeOnCancellation {
+                    completed.set(true)
+                }
+
+                if (!requested) {
+                    resumeOnce(continuation, completed, emptyList())
                 }
             }
         } ?: emptyList()
@@ -274,15 +288,14 @@ object LocationSignalsChecker {
         val appContext = context.applicationContext
         return withTimeoutOrNull(WIFI_SCAN_TIMEOUT_MS) {
             suspendCancellableCoroutine { continuation ->
+                val completed = AtomicBoolean(false)
                 val receiver = object : BroadcastReceiver() {
                     override fun onReceive(receiverContext: Context?, intent: Intent?) {
                         if (intent?.action != WifiManager.SCAN_RESULTS_AVAILABLE_ACTION) {
                             return
                         }
                         runCatching { appContext.unregisterReceiver(this) }
-                        if (continuation.isActive) {
-                            continuation.resume(currentWifiCandidates(wifiManager))
-                        }
+                        resumeOnce(continuation, completed, currentWifiCandidates(wifiManager))
                     }
                 }
 
@@ -296,22 +309,19 @@ object LocationSignalsChecker {
                 }.isSuccess
 
                 if (!registered) {
-                    if (continuation.isActive) {
-                        continuation.resume(currentWifiCandidates(wifiManager))
-                    }
+                    resumeOnce(continuation, completed, currentWifiCandidates(wifiManager))
                     return@suspendCancellableCoroutine
                 }
 
                 continuation.invokeOnCancellation {
+                    completed.set(true)
                     runCatching { appContext.unregisterReceiver(receiver) }
                 }
 
                 val started = runCatching { wifiManager.startScan() }.getOrDefault(false)
                 if (!started) {
                     runCatching { appContext.unregisterReceiver(receiver) }
-                    if (continuation.isActive) {
-                        continuation.resume(currentWifiCandidates(wifiManager))
-                    }
+                    resumeOnce(continuation, completed, currentWifiCandidates(wifiManager))
                 }
             }
         }
@@ -364,6 +374,18 @@ object LocationSignalsChecker {
         }
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun <T> resumeOnce(
+        continuation: CancellableContinuation<T>,
+        completed: AtomicBoolean,
+        value: T,
+    ) {
+        if (!completed.compareAndSet(false, true)) {
+            return
+        }
+        continuation.resume(value) { }
+    }
+
     @Suppress("DEPRECATION")
     private fun reverseGeocodeCountry(context: Context, latitude: Double, longitude: Double): String? {
         return runCatching {
@@ -404,20 +426,29 @@ object LocationSignalsChecker {
             val networkCountry = snapshot.networkCountryIso?.uppercase(Locale.US) ?: "N/A"
             val networkIsRussia = snapshot.networkMcc == RUSSIA_MCC
 
-            findings += Finding("Network operator: ${snapshot.networkOperatorName ?: "N/A"} ($networkCountry)")
-            findings += Finding("Network MCC: ${snapshot.networkMcc}")
+            findings += Finding(
+                description = "Network operator: ${snapshot.networkOperatorName ?: "N/A"} ($networkCountry)",
+                isInformational = true,
+            )
+            findings += Finding(
+                description = "Network MCC: ${snapshot.networkMcc}",
+                isInformational = true,
+            )
             if (networkIsRussia) {
                 findings += Finding("network_mcc_ru:true")
             }
 
             snapshot.simMcc?.let { simMcc ->
                 val simCountry = snapshot.simCountryIso?.uppercase(Locale.US) ?: "N/A"
-                findings += Finding("SIM MCC: $simMcc ($simCountry)")
+                findings += Finding(
+                    description = "SIM MCC: $simMcc ($simCountry)",
+                    isInformational = true,
+                )
             }
 
             when (snapshot.isRoaming) {
-                true -> findings += Finding("Roaming: yes")
-                false -> findings += Finding("Roaming: no")
+                true -> findings += Finding("Roaming: yes", isInformational = true)
+                false -> findings += Finding("Roaming: no", isInformational = true)
                 null -> Unit
             }
 

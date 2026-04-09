@@ -38,6 +38,7 @@ data class Finding(
     val description: String,
     val detected: Boolean = false,
     val needsReview: Boolean = false,
+    val isInformational: Boolean = false,
     val source: EvidenceSource? = null,
     val confidence: EvidenceConfidence? = null,
     val family: String? = null,
