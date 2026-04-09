@@ -150,7 +150,7 @@ object BypassChecker {
 
         reportProxyResult(proxyEndpoint, findings, evidence)
         reportXrayApiResult(xrayApiScanResult, findings, evidence)
-        val gatewayLeak = reportUnderlyingNetworkResult(underlyingResult, findings, evidence)
+        val networkPathBypass = reportUnderlyingNetworkResult(underlyingResult, findings, evidence)
 
         var directIp: String? = null
         var proxyIp: String? = null
@@ -231,7 +231,7 @@ object BypassChecker {
             }
         }
 
-        val detected = confirmedBypass || xrayApiScanResult != null || gatewayLeak
+        val detected = confirmedBypass || xrayApiScanResult != null || networkPathBypass
         val needsReview = !detected && proxyEndpoint != null
 
         BypassResult(
@@ -354,7 +354,7 @@ object BypassChecker {
         }
     }
 
-    private fun reportUnderlyingNetworkResult(
+    internal fun reportUnderlyingNetworkResult(
         result: UnderlyingNetworkProber.ProbeResult,
         findings: MutableList<Finding>,
         evidence: MutableList<EvidenceItem>,
@@ -364,49 +364,98 @@ object BypassChecker {
             return false
         }
 
+        var detected = false
+
+        when {
+            result.vpnIp != null && result.activeNetworkIsVpn == false -> {
+                findings.add(
+                    Finding(
+                        description = "VPN network binding: приложение получило IP ${result.vpnIp} " +
+                            "через явную привязку к VPN Network при non-VPN default сети",
+                        detected = true,
+                        source = EvidenceSource.VPN_NETWORK_BINDING,
+                        confidence = EvidenceConfidence.HIGH,
+                    ),
+                )
+                evidence.add(
+                    EvidenceItem(
+                        source = EvidenceSource.VPN_NETWORK_BINDING,
+                        detected = true,
+                        confidence = EvidenceConfidence.HIGH,
+                        description = "App reached internet via explicit VPN Network binding while default network was non-VPN",
+                    ),
+                )
+                detected = true
+            }
+            result.vpnIp != null -> {
+                findings.add(
+                    Finding(
+                        description = "IP через явную привязку к VPN Network: ${result.vpnIp}",
+                        isInformational = true,
+                        source = EvidenceSource.VPN_NETWORK_BINDING,
+                    ),
+                )
+            }
+        }
+
+        if (result.activeNetworkIsVpn == false) {
+            if (result.underlyingIp != null) {
+                findings.add(
+                    Finding(
+                        description = "Default non-VPN IP: ${result.underlyingIp}",
+                        isInformational = true,
+                    ),
+                )
+            }
+            return detected
+        }
+
         if (!result.underlyingReachable) {
             findings.add(Finding("Underlying network: non-VPN сеть недоступна (full tunnel)"))
             return false
         }
 
-        val description = buildString {
-            append("VPN gateway leak: приложение может обойти VPN-туннель")
-            if (result.vpnIp != null && result.underlyingIp != null) {
+        val ipsAreDifferent = result.vpnIp != null && result.underlyingIp != null &&
+            result.vpnIp != result.underlyingIp
+
+        if (ipsAreDifferent) {
+            val description = buildString {
+                append("VPN gateway leak: приложение может обойти VPN-туннель")
                 append(" (VPN IP: ${result.vpnIp}, реальный IP: ${result.underlyingIp})")
-            } else if (result.underlyingIp != null) {
-                append(" (реальный IP: ${result.underlyingIp})")
             }
-        }
-
-        findings.add(
-            Finding(
-                description = description,
-                detected = true,
-                source = EvidenceSource.VPN_GATEWAY_LEAK,
-                confidence = EvidenceConfidence.HIGH,
-            ),
-        )
-        evidence.add(
-            EvidenceItem(
-                source = EvidenceSource.VPN_GATEWAY_LEAK,
-                detected = true,
-                confidence = EvidenceConfidence.HIGH,
-                description = "App can reach internet bypassing VPN tunnel via underlying network",
-            ),
-        )
-
-        if (result.vpnIp != null && result.underlyingIp != null && result.vpnIp != result.underlyingIp) {
             findings.add(
                 Finding(
-                    description = "IP через VPN и underlying сеть различаются: подтверждён split tunnel",
+                    description = description,
                     detected = true,
                     source = EvidenceSource.VPN_GATEWAY_LEAK,
                     confidence = EvidenceConfidence.HIGH,
                 ),
             )
+            evidence.add(
+                EvidenceItem(
+                    source = EvidenceSource.VPN_GATEWAY_LEAK,
+                    detected = true,
+                    confidence = EvidenceConfidence.HIGH,
+                    description = "App can reach internet bypassing VPN tunnel via underlying network",
+                ),
+            )
+            return true
         }
 
-        return true
+        val infoDescription = buildString {
+            append("Underlying сеть доступна, но IP совпадает с VPN")
+            if (result.underlyingIp != null) append(" (${result.underlyingIp})")
+            append(": split tunnel не подтверждён")
+        }
+        findings.add(
+            Finding(
+                description = infoDescription,
+                isInformational = true,
+                source = EvidenceSource.VPN_GATEWAY_LEAK,
+            ),
+        )
+
+        return false
     }
 
     private fun formatHostPort(host: String, port: Int): String {
