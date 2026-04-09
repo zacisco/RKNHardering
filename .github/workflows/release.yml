@@ -30,6 +30,17 @@ jobs:
             echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           fi
 
+      - name: Resolve Android version
+        id: android_version
+        run: |
+          VERSION_NAME=${{ steps.version.outputs.tag }}
+          VERSION_NAME=${VERSION_NAME#v}
+          if ! [[ "$VERSION_NAME" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+            echo "Unsupported version format: $VERSION_NAME" >&2
+            exit 1
+          fi
+          echo "name=$VERSION_NAME" >> $GITHUB_OUTPUT
+
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
@@ -52,6 +63,7 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
           ./gradlew assembleRelease \
+            -PappVersionName=${{ steps.android_version.outputs.name }} \
             -Pandroid.injected.signing.store.file=$KEYSTORE_PATH \
             -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD \
             -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
