@@ -26,8 +26,7 @@ class LocationSignalsCheckerTest {
                 networkMcc = "244",
                 networkCountryIso = "fi",
                 networkOperatorName = "Elisa",
-                simMcc = "244",
-                simCountryIso = "fi",
+                simCards = listOf(sim(simMcc = "244", simCountryIso = "fi", operatorName = "Elisa", isRoaming = false)),
             ),
         )
 
@@ -46,9 +45,7 @@ class LocationSignalsCheckerTest {
                 networkMcc = "244",
                 networkCountryIso = "fi",
                 networkOperatorName = "Elisa",
-                simMcc = "250",
-                simCountryIso = "ru",
-                isRoaming = true,
+                simCards = listOf(sim(simMcc = "244", simCountryIso = "fi", operatorName = "Elisa", isRoaming = true)),
             ),
         )
 
@@ -68,8 +65,8 @@ class LocationSignalsCheckerTest {
         assertEquals(4, infoFindings.size)
         assertTrue(infoFindings.any { it.description.startsWith("Network operator:") })
         assertTrue(infoFindings.any { it.description.startsWith("Network MCC:") })
-        assertTrue(infoFindings.any { it.description.startsWith("SIM MCC:") })
-        assertTrue(infoFindings.any { it.description.startsWith("Roaming:") })
+        assertTrue(infoFindings.any { it.description.startsWith("SIM[0] MCC:") })
+        assertTrue(infoFindings.any { it.description.startsWith("SIM[0] Roaming:") })
         assertFalse(result.findings.any { it.description.startsWith("Cell lookup") && it.isInformational })
     }
 
@@ -80,9 +77,7 @@ class LocationSignalsCheckerTest {
                 networkMcc = null,
                 networkCountryIso = null,
                 networkOperatorName = null,
-                simMcc = null,
-                simCountryIso = null,
-                isRoaming = null,
+                simCards = emptyList(),
             ),
         )
 
@@ -183,13 +178,137 @@ class LocationSignalsCheckerTest {
         assertTrue(result.findings.any { it.description == "BSSID: unavailable" })
     }
 
+    @Test
+    fun `LocationSnapshot accepts simCards list`() {
+        val sim = LocationSignalsChecker.SimCardInfo(
+            slotIndex = 0,
+            subscriptionId = 1,
+            simMcc = "250",
+            simCountryIso = "ru",
+            operatorName = "MegaFon",
+            isRoaming = false,
+        )
+        val s = LocationSignalsChecker.LocationSnapshot(
+            networkMcc = "250",
+            networkCountryIso = "ru",
+            networkOperatorName = "MegaFon",
+            simCards = listOf(sim),
+            cellCountryCode = null,
+            cellLookupSummary = null,
+            cellCandidatesCount = 0,
+            wifiAccessPointCandidatesCount = 0,
+            bssid = null,
+            cellLookupPermissionGranted = false,
+            wifiPermissionGranted = false,
+        )
+        assertEquals(1, s.simCards.size)
+    }
+
+    @Test
+    fun `dual sim with ru network mcc produces clean result`() {
+        val result = LocationSignalsChecker.evaluate(
+            snapshot(
+                networkMcc = "250",
+                networkCountryIso = "ru",
+                networkOperatorName = "MegaFon",
+                simCards = listOf(
+                    sim(slotIndex = 0, subscriptionId = 1, simMcc = "250", simCountryIso = "ru", operatorName = "MegaFon", isRoaming = false),
+                    sim(slotIndex = 1, subscriptionId = 2, simMcc = "202", simCountryIso = "gr", operatorName = "Cosmote", isRoaming = false),
+                ),
+            ),
+        )
+
+        assertFalse(result.needsReview)
+        assertFalse(result.detected)
+        assertTrue(result.findings.any { it.description.startsWith("SIM[0] MCC:") })
+        assertTrue(result.findings.any { it.description.startsWith("SIM[1] MCC:") })
+    }
+
+    @Test
+    fun `dual sim non-ru network with non-roaming matching sim gives medium confidence`() {
+        val result = LocationSignalsChecker.evaluate(
+            snapshot(
+                networkMcc = "202",
+                networkCountryIso = "gr",
+                networkOperatorName = "Cosmote",
+                simCards = listOf(
+                    sim(slotIndex = 0, subscriptionId = 1, simMcc = "250", simCountryIso = "ru", operatorName = "MegaFon", isRoaming = false),
+                    sim(slotIndex = 1, subscriptionId = 2, simMcc = "202", simCountryIso = "gr", operatorName = "Cosmote", isRoaming = false),
+                ),
+            ),
+        )
+
+        assertTrue(result.needsReview)
+        assertTrue(
+            result.evidence.any {
+                it.source == EvidenceSource.LOCATION_SIGNALS && it.confidence == EvidenceConfidence.MEDIUM
+            },
+        )
+    }
+
+    @Test
+    fun `dual sim non-ru network with roaming matching sim gives low confidence`() {
+        val result = LocationSignalsChecker.evaluate(
+            snapshot(
+                networkMcc = "202",
+                networkCountryIso = "gr",
+                networkOperatorName = "Cosmote",
+                simCards = listOf(
+                    sim(slotIndex = 0, subscriptionId = 1, simMcc = "250", simCountryIso = "ru", operatorName = "MegaFon", isRoaming = false),
+                    sim(slotIndex = 1, subscriptionId = 2, simMcc = "202", simCountryIso = "gr", operatorName = "Cosmote", isRoaming = true),
+                ),
+            ),
+        )
+
+        assertTrue(result.needsReview)
+        assertTrue(
+            result.evidence.any {
+                it.source == EvidenceSource.LOCATION_SIGNALS && it.confidence == EvidenceConfidence.LOW
+            },
+        )
+    }
+
+    @Test
+    fun `empty sim cards list produces no sim findings and medium confidence for non-ru network`() {
+        val result = LocationSignalsChecker.evaluate(
+            snapshot(
+                networkMcc = "244",
+                networkCountryIso = "fi",
+                networkOperatorName = "Elisa",
+                simCards = emptyList(),
+            ),
+        )
+
+        assertTrue(result.needsReview)
+        assertFalse(result.findings.any { it.description.startsWith("SIM[") })
+        assertTrue(
+            result.evidence.any {
+                it.source == EvidenceSource.LOCATION_SIGNALS && it.confidence == EvidenceConfidence.MEDIUM
+            },
+        )
+    }
+
+    private fun sim(
+        slotIndex: Int = 0,
+        subscriptionId: Int = 1,
+        simMcc: String? = "250",
+        simCountryIso: String? = "ru",
+        operatorName: String? = "MegaFon",
+        isRoaming: Boolean? = false,
+    ) = LocationSignalsChecker.SimCardInfo(
+        slotIndex = slotIndex,
+        subscriptionId = subscriptionId,
+        simMcc = simMcc,
+        simCountryIso = simCountryIso,
+        operatorName = operatorName,
+        isRoaming = isRoaming,
+    )
+
     private fun snapshot(
         networkMcc: String? = "250",
         networkCountryIso: String? = "ru",
         networkOperatorName: String? = "MegaFon",
-        simMcc: String? = "250",
-        simCountryIso: String? = "ru",
-        isRoaming: Boolean? = false,
+        simCards: List<LocationSignalsChecker.SimCardInfo> = listOf(sim()),
         cellCountryCode: String? = null,
         cellLookupSummary: String? = null,
         cellCandidatesCount: Int = 0,
@@ -202,9 +321,7 @@ class LocationSignalsCheckerTest {
             networkMcc = networkMcc,
             networkCountryIso = networkCountryIso,
             networkOperatorName = networkOperatorName,
-            simMcc = simMcc,
-            simCountryIso = simCountryIso,
-            isRoaming = isRoaming,
+            simCards = simCards,
             cellCountryCode = cellCountryCode,
             cellLookupSummary = cellLookupSummary,
             cellCandidatesCount = cellCandidatesCount,

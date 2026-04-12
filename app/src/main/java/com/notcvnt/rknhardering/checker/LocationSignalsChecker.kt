@@ -38,13 +38,20 @@ import java.util.Locale
 
 object LocationSignalsChecker {
 
+    data class SimCardInfo(
+        val slotIndex: Int,
+        val subscriptionId: Int,
+        val simMcc: String?,
+        val simCountryIso: String?,
+        val operatorName: String?,
+        val isRoaming: Boolean?,
+    )
+
     internal data class LocationSnapshot(
         val networkMcc: String?,
         val networkCountryIso: String?,
         val networkOperatorName: String?,
-        val simMcc: String?,
-        val simCountryIso: String?,
-        val isRoaming: Boolean?,
+        val simCards: List<SimCardInfo>,
         val cellCountryCode: String?,
         val cellLookupSummary: String?,
         val cellCandidatesCount: Int,
@@ -86,9 +93,6 @@ object LocationSignalsChecker {
         var networkMcc: String? = null
         var networkCountryIso: String? = null
         var networkOperatorName: String? = null
-        var simMcc: String? = null
-        var simCountryIso: String? = null
-        var isRoaming: Boolean? = null
         var cellCountryCode: String? = null
         var cellLookupSummary: String? = null
         var cellCandidatesCount = 0
@@ -102,14 +106,9 @@ object LocationSignalsChecker {
             }
             networkCountryIso = tm.networkCountryIso?.takeIf { it.isNotEmpty() }
             networkOperatorName = tm.networkOperatorName?.takeIf { it.isNotEmpty() }
-
-            val simOperator = tm.simOperator
-            if (!simOperator.isNullOrEmpty() && simOperator.length >= 3) {
-                simMcc = simOperator.substring(0, 3)
-            }
-            simCountryIso = tm.simCountryIso?.takeIf { it.isNotEmpty() }
-            isRoaming = tm.isNetworkRoaming
         }
+
+        val simCards = collectSimCards(context, tm)
 
         val cellCandidates = if (cellLookupPermissionGranted) {
             collectCellCandidates(context, tm).also { cellCandidatesCount = it.size }
@@ -145,9 +144,7 @@ object LocationSignalsChecker {
             networkMcc = networkMcc,
             networkCountryIso = networkCountryIso,
             networkOperatorName = networkOperatorName,
-            simMcc = simMcc,
-            simCountryIso = simCountryIso,
-            isRoaming = isRoaming,
+            simCards = simCards,
             cellCountryCode = cellCountryCode,
             cellLookupSummary = cellLookupSummary,
             cellCandidatesCount = cellCandidatesCount,
@@ -160,6 +157,50 @@ object LocationSignalsChecker {
 
     private fun hasPermission(context: Context, permission: String): Boolean {
         return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun collectSimCards(context: Context, tm: TelephonyManager): List<SimCardInfo> {
+        val sm = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE)
+                as? android.telephony.SubscriptionManager
+        val subscriptions = runCatching { sm?.activeSubscriptionInfoList }.getOrNull()
+
+        if (!subscriptions.isNullOrEmpty()) {
+            return subscriptions.mapNotNull { info ->
+                runCatching {
+                    val subTm = tm.createForSubscriptionId(info.subscriptionId)
+                    val simOperator = subTm.simOperator
+                    val simMcc = if (!simOperator.isNullOrEmpty() && simOperator.length >= 3) {
+                        simOperator.substring(0, 3)
+                    } else null
+                    SimCardInfo(
+                        slotIndex = info.simSlotIndex,
+                        subscriptionId = info.subscriptionId,
+                        simMcc = simMcc,
+                        simCountryIso = subTm.simCountryIso?.takeIf { it.isNotEmpty() },
+                        operatorName = subTm.networkOperatorName?.takeIf { it.isNotEmpty() },
+                        isRoaming = subTm.isNetworkRoaming,
+                    )
+                }.getOrNull()
+            }
+        }
+
+        // Fallback: single-SIM device or permission denied
+        return runCatching {
+            val simOperator = tm.simOperator
+            val simMcc = if (!simOperator.isNullOrEmpty() && simOperator.length >= 3) {
+                simOperator.substring(0, 3)
+            } else null
+            listOf(
+                SimCardInfo(
+                    slotIndex = 0,
+                    subscriptionId = -1,
+                    simMcc = simMcc,
+                    simCountryIso = tm.simCountryIso?.takeIf { it.isNotEmpty() },
+                    operatorName = tm.networkOperatorName?.takeIf { it.isNotEmpty() },
+                    isRoaming = tm.isNetworkRoaming,
+                )
+            )
+        }.getOrElse { emptyList() }
     }
 
     private suspend fun collectCellCandidates(
@@ -535,22 +576,23 @@ object LocationSignalsChecker {
                 findings += Finding("network_mcc_ru:true")
             }
 
-            snapshot.simMcc?.let { simMcc ->
-                val simCountry = snapshot.simCountryIso?.uppercase(Locale.US) ?: "N/A"
+            for (sim in snapshot.simCards) {
+                val simCountry = sim.simCountryIso?.uppercase(Locale.US) ?: "N/A"
+                val operatorPart = sim.operatorName?.let { ", $it" } ?: ""
                 findings += Finding(
-                    description = "SIM MCC: $simMcc ($simCountry)",
+                    description = "SIM[${sim.slotIndex}] MCC: ${sim.simMcc ?: "N/A"} ($simCountry)$operatorPart",
                     isInformational = true,
                 )
-            }
-
-            when (snapshot.isRoaming) {
-                true -> findings += Finding("Roaming: yes", isInformational = true)
-                false -> findings += Finding("Roaming: no", isInformational = true)
-                null -> Unit
+                when (sim.isRoaming) {
+                    true -> findings += Finding("SIM[${sim.slotIndex}] Roaming: yes", isInformational = true)
+                    false -> findings += Finding("SIM[${sim.slotIndex}] Roaming: no", isInformational = true)
+                    null -> Unit
+                }
             }
 
             if (!networkIsRussia) {
-                val confidence = if (snapshot.isRoaming == true) {
+                val matchingSim = snapshot.simCards.firstOrNull { it.simMcc == snapshot.networkMcc }
+                val confidence = if (matchingSim?.isRoaming == true) {
                     EvidenceConfidence.LOW
                 } else {
                     EvidenceConfidence.MEDIUM
