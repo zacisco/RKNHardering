@@ -4,10 +4,10 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import com.notcvnt.rknhardering.network.DnsResolverConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.net.URL
-import javax.net.ssl.HttpsURLConnection
+import java.io.IOException
 
 /**
  * Detects whether a non-VPN (underlying) network is reachable from this app.
@@ -27,6 +27,8 @@ object UnderlyingNetworkProber {
         val underlyingReachable: Boolean,
         val vpnIp: String? = null,
         val underlyingIp: String? = null,
+        val vpnError: String? = null,
+        val underlyingError: String? = null,
         val vpnNetwork: Network? = null,
         val underlyingNetwork: Network? = null,
         val activeNetworkIsVpn: Boolean? = null,
@@ -47,7 +49,10 @@ object UnderlyingNetworkProber {
     private const val TIMEOUT_MS = 7000
 
     @Suppress("DEPRECATION")
-    suspend fun probe(context: Context): ProbeResult = withContext(Dispatchers.IO) {
+    suspend fun probe(
+        context: Context,
+        resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
+    ): ProbeResult = withContext(Dispatchers.IO) {
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val activeNetwork = cm.activeNetwork
         val activeNetworkIsVpn = activeNetwork
@@ -76,27 +81,34 @@ object UnderlyingNetworkProber {
             )
         }
 
-        val vpnIp = fetchIpViaNetwork(vpnNetwork)
+        val vpnResult = fetchIpViaNetwork(vpnNetwork, resolverConfig)
+        val vpnIp = vpnResult.getOrNull()
+        val vpnError = vpnResult.exceptionOrNull()?.message
 
         if (nonVpnNetworks.isEmpty()) {
             return@withContext ProbeResult(
                 vpnActive = true,
                 underlyingReachable = false,
                 vpnIp = vpnIp,
+                vpnError = vpnError,
                 vpnNetwork = vpnNetwork,
                 activeNetworkIsVpn = activeNetworkIsVpn,
             )
         }
 
         var underlyingIp: String? = null
+        var underlyingError: String? = null
         var usedNetwork: Network? = null
 
         for (network in nonVpnNetworks) {
-            underlyingIp = fetchIpViaNetwork(network)
+            val result = fetchIpViaNetwork(network, resolverConfig)
+            underlyingIp = result.getOrNull()
             if (underlyingIp != null) {
                 usedNetwork = network
+                underlyingError = null
                 break
             }
+            underlyingError = result.exceptionOrNull()?.message ?: underlyingError
         }
 
         ProbeResult(
@@ -104,48 +116,29 @@ object UnderlyingNetworkProber {
             underlyingReachable = underlyingIp != null,
             vpnIp = vpnIp,
             underlyingIp = underlyingIp,
+            vpnError = vpnError,
+            underlyingError = underlyingError,
             vpnNetwork = vpnNetwork,
             underlyingNetwork = usedNetwork,
             activeNetworkIsVpn = activeNetworkIsVpn,
         )
     }
 
-    private fun fetchIpViaNetwork(network: Network): String? {
+    private fun fetchIpViaNetwork(
+        network: Network,
+        resolverConfig: DnsResolverConfig,
+    ): Result<String> {
+        var lastError: Exception? = null
         for (endpoint in IP_ENDPOINTS) {
-            val ip = fetchSingleIp(network, endpoint.url)
-            if (ip != null) return ip
+            val result = PublicIpClient.fetchIp(
+                endpoint = endpoint.url,
+                timeoutMs = TIMEOUT_MS,
+                resolverConfig = resolverConfig,
+                network = network,
+            )
+            if (result.isSuccess) return result
+            lastError = result.exceptionOrNull() as? Exception ?: lastError
         }
-        return null
-    }
-
-    private fun fetchSingleIp(network: Network, endpoint: String): String? {
-        return try {
-            val url = URL(endpoint)
-            val connection = network.openConnection(url) as? HttpsURLConnection ?: return null
-            connection.instanceFollowRedirects = true
-            connection.requestMethod = "GET"
-            connection.useCaches = false
-            connection.connectTimeout = TIMEOUT_MS
-            connection.readTimeout = TIMEOUT_MS
-            connection.setRequestProperty("User-Agent", "curl/8.0")
-            connection.setRequestProperty("Accept", "text/plain")
-
-            try {
-                val code = connection.responseCode
-                if (code !in 200..299) return null
-                val body = connection.inputStream.bufferedReader().use { it.readText() }.trim()
-                body.takeIf { it.isNotBlank() && looksLikeIp(it) }
-            } finally {
-                connection.disconnect()
-            }
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    private fun looksLikeIp(text: String): Boolean {
-        val trimmed = text.trim()
-        if (trimmed.length > 45) return false
-        return trimmed.matches(Regex("""[\d.:a-fA-F]+"""))
+        return Result.failure(lastError ?: IOException("All IP endpoints failed"))
     }
 }

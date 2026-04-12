@@ -1,5 +1,6 @@
 package com.notcvnt.rknhardering.network
 
+import android.net.Network
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -36,8 +37,12 @@ object ResolverNetworkStack {
     @Volatile
     private var cachedClient: OkHttpClient? = null
 
-    fun lookup(hostname: String, config: DnsResolverConfig): List<InetAddress> {
-        return dns(config).lookup(hostname)
+    fun lookup(
+        hostname: String,
+        config: DnsResolverConfig,
+        network: Network? = null,
+    ): List<InetAddress> {
+        return dns(config, network).lookup(hostname)
     }
 
     internal fun resetForTests() {
@@ -57,6 +62,7 @@ object ResolverNetworkStack {
         timeoutMs: Int,
         config: DnsResolverConfig,
         proxy: Proxy? = null,
+        network: Network? = null,
     ): ResolverHttpResponse {
         val requestBuilder = Request.Builder().url(url)
         headers.forEach { (name, value) -> requestBuilder.header(name, value) }
@@ -66,7 +72,7 @@ object ResolverNetworkStack {
             "POST" -> requestBuilder.post(requestBody ?: ByteArray(0).toRequestBody(bodyContentType?.toMediaTypeOrNull()))
             else -> requestBuilder.method(method.uppercase(), requestBody)
         }
-        val client = baseClient(config)
+        val client = baseClient(config, network)
             .newBuilder()
             .connectTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
             .readTimeout(timeoutMs.toLong(), TimeUnit.MILLISECONDS)
@@ -85,8 +91,15 @@ object ResolverNetworkStack {
         }
     }
 
-    private fun baseClient(config: DnsResolverConfig): OkHttpClient {
+    private fun baseClient(config: DnsResolverConfig, network: Network? = null): OkHttpClient {
         val normalized = config.sanitized()
+        if (network != null) {
+            return buildClient(
+                config = normalized,
+                dns = createDns(normalized, network),
+                network = network,
+            )
+        }
         val cached = cachedConfig
         if (cached == normalized) {
             return cachedClient ?: buildClient(normalized)
@@ -105,8 +118,11 @@ object ResolverNetworkStack {
         }
     }
 
-    private fun dns(config: DnsResolverConfig): Dns {
+    private fun dns(config: DnsResolverConfig, network: Network? = null): Dns {
         val normalized = config.sanitized()
+        if (network != null) {
+            return createDns(normalized, network)
+        }
         val cached = cachedConfig
         if (cached == normalized) {
             return cachedDns ?: createDns(normalized)
@@ -125,28 +141,45 @@ object ResolverNetworkStack {
         }
     }
 
-    private fun buildClient(config: DnsResolverConfig, dns: Dns = createDns(config)): OkHttpClient {
+    private fun buildClient(
+        config: DnsResolverConfig,
+        dns: Dns = createDns(config),
+        network: Network? = null,
+    ): OkHttpClient {
         return OkHttpClient.Builder()
             .dns(dns)
             .followRedirects(true)
             .followSslRedirects(true)
+            .apply {
+                if (network != null) {
+                    socketFactory(network.socketFactory)
+                }
+            }
             .build()
     }
 
-    private fun createDns(config: DnsResolverConfig): Dns {
+    private fun createDns(config: DnsResolverConfig, network: Network? = null): Dns {
         dnsFactoryOverride?.let { return it(config) }
         return when (config.mode) {
-            DnsResolverMode.SYSTEM -> Dns.SYSTEM
+            DnsResolverMode.SYSTEM -> network?.let(::NetworkDns) ?: Dns.SYSTEM
             DnsResolverMode.DIRECT -> {
                 val servers = config.effectiveDirectServers()
-                if (servers.isEmpty()) Dns.SYSTEM else DirectDns(servers)
+                if (servers.isEmpty()) network?.let(::NetworkDns) ?: Dns.SYSTEM else DirectDns(servers, network = network)
             }
             DnsResolverMode.DOH -> {
-                val dohUrl = config.effectiveDohUrl() ?: return Dns.SYSTEM
+                val dohUrl = config.effectiveDohUrl() ?: return network?.let(::NetworkDns) ?: Dns.SYSTEM
                 val bootstrapHosts = config.effectiveDohBootstrapHosts()
                     .mapNotNull { literalToInetAddress(it) }
+                val bootstrapClient = OkHttpClient.Builder()
+                    .apply {
+                        if (network != null) {
+                            socketFactory(network.socketFactory)
+                            dns(NetworkDns(network))
+                        }
+                    }
+                    .build()
                 val builder = DnsOverHttps.Builder()
-                    .client(OkHttpClient.Builder().build())
+                    .client(bootstrapClient)
                     .url(dohUrl.toHttpUrl())
                 if (bootstrapHosts.isNotEmpty()) {
                     builder.bootstrapDnsHosts(bootstrapHosts)
@@ -162,10 +195,26 @@ object ResolverNetworkStack {
     }
 }
 
+private class NetworkDns(
+    private val network: Network,
+) : Dns {
+    override fun lookup(hostname: String): List<InetAddress> {
+        if (DnsResolverConfig.isValidIpLiteral(hostname)) {
+            return listOf(InetAddress.getByName(hostname))
+        }
+        return network.getAllByName(hostname)
+            ?.toList()
+            ?.distinctBy { it.hostAddress }
+            ?.takeIf { it.isNotEmpty() }
+            ?: throw UnknownHostException("Failed to resolve $hostname on bound network")
+    }
+}
+
 internal class DirectDns(
     servers: List<String>,
     private val port: Int = 53,
     private val timeoutMs: Int = 3_000,
+    private val network: Network? = null,
 ) : Dns {
     private val serverAddresses = servers.mapNotNull { value ->
         runCatching { InetAddress.getByName(value.trim()) }.getOrNull()
@@ -210,6 +259,7 @@ internal class DirectDns(
         val payload = buildQuery(hostname, type, requestId)
         DatagramSocket().use { socket ->
             socket.soTimeout = timeoutMs
+            network?.bindSocket(socket)
             socket.send(DatagramPacket(payload, payload.size, server, port))
 
             val responseBuffer = ByteArray(1500)

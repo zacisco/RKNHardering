@@ -1,5 +1,6 @@
 package com.notcvnt.rknhardering.probe
 
+import com.notcvnt.rknhardering.network.DnsResolverConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException
@@ -15,14 +16,21 @@ object IfconfigClient {
         "https://ipv6-internet.yandex.net/api/v0/ip",
     )
 
-    suspend fun fetchDirectIp(timeoutMs: Int = 7000): Result<String> =
-        fetchIpWithFallback(timeoutMs = timeoutMs)
+    suspend fun fetchDirectIp(
+        timeoutMs: Int = 7000,
+        resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
+    ): Result<String> = fetchIpWithFallback(
+        timeoutMs = timeoutMs,
+        resolverConfig = resolverConfig,
+    )
 
     suspend fun fetchIpViaProxy(
         endpoint: ProxyEndpoint,
         timeoutMs: Int = 7000,
+        resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
     ): Result<String> = fetchIpWithFallback(
         timeoutMs = timeoutMs,
+        resolverConfig = resolverConfig,
         proxy = Proxy(
             when (endpoint.type) {
                 ProxyType.SOCKS5 -> Proxy.Type.SOCKS
@@ -34,11 +42,17 @@ object IfconfigClient {
 
     private suspend fun fetchIpWithFallback(
         timeoutMs: Int,
+        resolverConfig: DnsResolverConfig,
         proxy: Proxy? = null,
     ): Result<String> = withContext(Dispatchers.IO) {
         var lastError: Exception? = null
         for (ep in ENDPOINTS) {
-            val result = PublicIpClient.fetchIp(ep, timeoutMs, proxy)
+            val result = PublicIpClient.fetchIp(
+                endpoint = ep,
+                timeoutMs = timeoutMs,
+                proxy = proxy,
+                resolverConfig = resolverConfig,
+            )
             if (result.isSuccess) return@withContext result
             lastError = result.exceptionOrNull() as? Exception ?: lastError
         }

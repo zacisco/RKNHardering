@@ -309,14 +309,17 @@
     <string name="checker_bypass_xray_api">Xray gRPC API: %1$s</string>
     <string name="checker_bypass_extra_outbounds">&#160;&#160;...ещё %1$d аутбаундов</string>
     <string name="checker_bypass_vpn_not_active">Underlying network: VPN не активен, проверка не требуется</string>
-    <string name="checker_bypass_vpn_network_binding">VPN network binding: приложение получило IP %1$s через явную привязку к VPN Network при non-VPN default сети</string>
+    <string name="checker_bypass_vpn_network_binding">VPN network binding: приложение видит и VPN Network, и non-VPN default сеть (VPN IP: %1$s, direct IP: %2$s)</string>
     <string name="checker_bypass_vpn_bound_ip">IP через явную привязку к VPN Network: %1$s</string>
     <string name="checker_bypass_tun_probe_success">TUN активный зонд: запрос через VPN Network вернул IP %1$s (TUN — живой маршрутизируемый интерфейс)</string>
     <string name="checker_bypass_tun_probe_failure">TUN активный зонд: запрос через VPN Network недоступен (интерфейс заблокирован или filtered)</string>
+    <string name="checker_bypass_tun_probe_failure_reason">TUN активный зонд: запрос через VPN Network завершился ошибкой (%1$s)</string>
     <string name="checker_bypass_default_non_vpn_ip">Default non-VPN IP: %1$s</string>
     <string name="checker_bypass_underlying_unreachable">Underlying network: non-VPN сеть недоступна (full tunnel)</string>
+    <string name="checker_bypass_underlying_unreachable_reason">Underlying network: non-VPN сеть недоступна (%1$s)</string>
     <string name="checker_bypass_gateway_leak">VPN gateway leak: приложение может обойти VPN-туннель (VPN IP: %1$s, реальный IP: %2$s)</string>
     <string name="checker_bypass_underlying_same_ip">Underlying сеть доступна, но IP совпадает с VPN%1$s: split tunnel не подтверждён</string>
+    <string name="checker_bypass_compare_incomplete">Сравнение split tunnel неполное (VPN IP: %1$s, non-VPN IP: %2$s): нужна ручная проверка</string>
 
     <!-- InstalledVpnAppDetector -->
     <string name="checker_vpn_known_apps_none">Известные VPN/Proxy-приложения и VpnService-провайдеры: не обнаружены</string>

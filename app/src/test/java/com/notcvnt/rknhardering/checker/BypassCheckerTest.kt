@@ -11,8 +11,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class BypassCheckerTest {
 
     private val context: Context = ApplicationProvider.getApplicationContext()
@@ -22,7 +24,7 @@ class BypassCheckerTest {
         val findings = mutableListOf<Finding>()
         val evidence = mutableListOf<EvidenceItem>()
 
-        val detected = BypassChecker.reportUnderlyingNetworkResult(
+        val outcome = BypassChecker.reportUnderlyingNetworkResult(
             context = context,
             result = UnderlyingNetworkProber.ProbeResult(
                 vpnActive = true,
@@ -35,7 +37,8 @@ class BypassCheckerTest {
             evidence = evidence,
         )
 
-        assertTrue(detected)
+        assertTrue(outcome.detected)
+        assertFalse(outcome.needsReview)
         assertTrue(evidence.any { it.source == EvidenceSource.VPN_NETWORK_BINDING })
         assertFalse(evidence.any { it.source == EvidenceSource.VPN_GATEWAY_LEAK })
         assertTrue(findings.any { it.description.contains("VPN network binding") })
@@ -46,7 +49,7 @@ class BypassCheckerTest {
         val findings = mutableListOf<Finding>()
         val evidence = mutableListOf<EvidenceItem>()
 
-        val detected = BypassChecker.reportUnderlyingNetworkResult(
+        val outcome = BypassChecker.reportUnderlyingNetworkResult(
             context = context,
             result = UnderlyingNetworkProber.ProbeResult(
                 vpnActive = true,
@@ -59,7 +62,8 @@ class BypassCheckerTest {
             evidence = evidence,
         )
 
-        assertTrue(detected)
+        assertTrue(outcome.detected)
+        assertFalse(outcome.needsReview)
         assertTrue(evidence.any { it.source == EvidenceSource.VPN_GATEWAY_LEAK })
         assertFalse(evidence.any { it.source == EvidenceSource.VPN_NETWORK_BINDING && it.detected })
     }
@@ -96,7 +100,7 @@ class BypassCheckerTest {
         val findings = mutableListOf<Finding>()
         val evidence = mutableListOf<EvidenceItem>()
 
-        val detected = BypassChecker.reportUnderlyingNetworkResult(
+        val outcome = BypassChecker.reportUnderlyingNetworkResult(
             context = context,
             result = UnderlyingNetworkProber.ProbeResult(
                 vpnActive = true,
@@ -109,19 +113,20 @@ class BypassCheckerTest {
             evidence = evidence,
         )
 
-        assertFalse(detected)
+        assertFalse(outcome.detected)
+        assertTrue(outcome.needsReview)
         assertFalse(evidence.any { it.source == EvidenceSource.VPN_NETWORK_BINDING && it.detected })
         assertTrue(
             findings.any {
-                it.isInformational &&
+                it.needsReview &&
                     it.source == EvidenceSource.VPN_NETWORK_BINDING &&
-                    it.description.contains("185.220.1.10")
+                    it.description.contains("manual review")
             },
         )
     }
 
     @Test
-    fun `tun probe failure is recorded when vpn active but fetch returned null`() {
+    fun `tun probe failure reason is recorded when vpn path fails`() {
         val findings = mutableListOf<Finding>()
         val evidence = mutableListOf<EvidenceItem>()
 
@@ -132,6 +137,7 @@ class BypassCheckerTest {
                 underlyingReachable = false,
                 vpnIp = null,
                 underlyingIp = null,
+                vpnError = "timeout",
                 activeNetworkIsVpn = true,
             ),
             findings = findings,
@@ -142,35 +148,37 @@ class BypassCheckerTest {
             findings.any {
                 it.isInformational &&
                     it.source == EvidenceSource.TUN_ACTIVE_PROBE &&
-                    it.description.contains("unavailable")
+                    it.description.contains("timeout")
             },
         )
     }
 
     @Test
-    fun `gateway leak remains detected when underlying path works but vpn ip probe fails`() {
+    fun `gateway leak requires vpn and underlying ip comparison`() {
         val findings = mutableListOf<Finding>()
         val evidence = mutableListOf<EvidenceItem>()
 
-        val detected = BypassChecker.reportUnderlyingNetworkResult(
+        val outcome = BypassChecker.reportUnderlyingNetworkResult(
             context = context,
             result = UnderlyingNetworkProber.ProbeResult(
                 vpnActive = true,
                 underlyingReachable = true,
                 vpnIp = null,
                 underlyingIp = "91.198.174.192",
+                vpnError = "timeout",
                 activeNetworkIsVpn = true,
             ),
             findings = findings,
             evidence = evidence,
         )
 
-        assertTrue(detected)
-        assertTrue(evidence.any { it.source == EvidenceSource.VPN_GATEWAY_LEAK && it.detected })
+        assertFalse(outcome.detected)
+        assertTrue(outcome.needsReview)
+        assertFalse(evidence.any { it.source == EvidenceSource.VPN_GATEWAY_LEAK && it.detected })
         assertTrue(
             findings.any {
                 it.source == EvidenceSource.VPN_GATEWAY_LEAK &&
-                    it.detected &&
+                    it.needsReview &&
                     it.description.contains("91.198.174.192")
             },
         )
@@ -181,7 +189,7 @@ class BypassCheckerTest {
         val findings = mutableListOf<Finding>()
         val evidence = mutableListOf<EvidenceItem>()
 
-        val detected = BypassChecker.reportUnderlyingNetworkResult(
+        val outcome = BypassChecker.reportUnderlyingNetworkResult(
             context = context,
             result = UnderlyingNetworkProber.ProbeResult(
                 vpnActive = true,
@@ -194,8 +202,33 @@ class BypassCheckerTest {
             evidence = evidence,
         )
 
-        assertFalse(detected)
+        assertFalse(outcome.detected)
+        assertFalse(outcome.needsReview)
         assertFalse(evidence.any { it.source == EvidenceSource.VPN_GATEWAY_LEAK && it.detected })
         assertTrue(findings.any { it.isInformational && it.source == EvidenceSource.VPN_GATEWAY_LEAK })
+    }
+
+    @Test
+    fun `vpn network binding is not detected when default and vpn ips match`() {
+        val findings = mutableListOf<Finding>()
+        val evidence = mutableListOf<EvidenceItem>()
+
+        val outcome = BypassChecker.reportUnderlyingNetworkResult(
+            context = context,
+            result = UnderlyingNetworkProber.ProbeResult(
+                vpnActive = true,
+                underlyingReachable = true,
+                vpnIp = "203.0.113.10",
+                underlyingIp = "203.0.113.10",
+                activeNetworkIsVpn = false,
+            ),
+            findings = findings,
+            evidence = evidence,
+        )
+
+        assertFalse(outcome.detected)
+        assertFalse(outcome.needsReview)
+        assertFalse(evidence.any { it.source == EvidenceSource.VPN_NETWORK_BINDING && it.detected })
+        assertTrue(findings.any { it.isInformational && it.source == EvidenceSource.VPN_NETWORK_BINDING })
     }
 }

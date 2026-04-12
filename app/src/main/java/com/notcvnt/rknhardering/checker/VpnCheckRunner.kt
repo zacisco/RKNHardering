@@ -60,6 +60,7 @@ object VpnCheckRunner {
             async {
                 BypassChecker.check(
                     context = context,
+                    resolverConfig = settings.resolverConfig,
                     portRange = settings.portRange,
                     portRangeStart = settings.portRangeStart,
                     portRangeEnd = settings.portRangeEnd,

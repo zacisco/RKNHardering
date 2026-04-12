@@ -164,6 +164,19 @@ class VerdictEngineTest {
         assertEquals(Verdict.NOT_DETECTED, verdict)
     }
 
+    @Test
+    fun `bypass needs review elevates clean verdict to needs review`() {
+        val verdict = VerdictEngine.evaluate(
+            geoIp = category(),
+            directSigns = category(),
+            indirectSigns = category(),
+            locationSignals = category(),
+            bypassResult = bypass(needsReview = true),
+        )
+
+        assertEquals(Verdict.NEEDS_REVIEW, verdict)
+    }
+
     private data class MatrixCase(
         val label: String,
         val geo: Boolean,
@@ -215,6 +228,7 @@ class VerdictEngineTest {
 
     private fun bypass(
         evidence: List<EvidenceItem> = emptyList(),
+        needsReview: Boolean = false,
     ): BypassResult = BypassResult(
         proxyEndpoint = null,
         directIp = null,
@@ -224,6 +238,7 @@ class VerdictEngineTest {
         xrayApiScanResult = null,
         findings = emptyList(),
         detected = evidence.any { it.detected },
+        needsReview = needsReview,
         evidence = evidence,
     )
 

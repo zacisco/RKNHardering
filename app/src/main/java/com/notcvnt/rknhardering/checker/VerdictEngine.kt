@@ -62,7 +62,7 @@ object VerdictEngine {
         val directMatrixHit = directEvidence.any { it.source in MATRIX_DIRECT_SOURCES }
         val indirectMatrixHit = indirectEvidence.any { it.source in MATRIX_INDIRECT_SOURCES }
 
-        return when {
+        val matrixVerdict = when {
             !geoMatrixHit && !directMatrixHit && !indirectMatrixHit -> Verdict.NOT_DETECTED
             !geoMatrixHit && directMatrixHit && !indirectMatrixHit -> Verdict.NOT_DETECTED
             !geoMatrixHit && !directMatrixHit && indirectMatrixHit -> Verdict.NOT_DETECTED
@@ -70,5 +70,11 @@ object VerdictEngine {
             !geoMatrixHit && directMatrixHit && indirectMatrixHit -> Verdict.NEEDS_REVIEW
             else -> Verdict.DETECTED
         }
+
+        if (bypassResult.needsReview && matrixVerdict == Verdict.NOT_DETECTED) {
+            return Verdict.NEEDS_REVIEW
+        }
+
+        return matrixVerdict
     }
 }

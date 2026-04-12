@@ -307,14 +307,17 @@
     <string name="checker_bypass_xray_api">Xray gRPC API: %1$s</string>
     <string name="checker_bypass_extra_outbounds">&#160;&#160;...%1$d more outbounds</string>
     <string name="checker_bypass_vpn_not_active">Underlying network: VPN is not active, the check is not required</string>
-    <string name="checker_bypass_vpn_network_binding">VPN network binding: the app obtained IP %1$s via explicit binding to VPN Network while the default network is non-VPN</string>
+    <string name="checker_bypass_vpn_network_binding">VPN network binding: the app can reach both the default non-VPN path and VPN Network (VPN IP: %1$s, default IP: %2$s)</string>
     <string name="checker_bypass_vpn_bound_ip">IP via explicit binding to VPN Network: %1$s</string>
     <string name="checker_bypass_tun_probe_success">TUN active probe: a request via VPN Network returned IP %1$s (TUN is a live routable interface)</string>
     <string name="checker_bypass_tun_probe_failure">TUN active probe: a request via VPN Network is unavailable (the interface is blocked or filtered)</string>
+    <string name="checker_bypass_tun_probe_failure_reason">TUN active probe: a request via VPN Network failed (%1$s)</string>
     <string name="checker_bypass_default_non_vpn_ip">Default non-VPN IP: %1$s</string>
     <string name="checker_bypass_underlying_unreachable">Underlying network: the non-VPN network is unavailable (full tunnel)</string>
+    <string name="checker_bypass_underlying_unreachable_reason">Underlying network: the non-VPN network is unavailable (%1$s)</string>
     <string name="checker_bypass_gateway_leak">VPN gateway leak: the app can bypass the VPN tunnel (VPN IP: %1$s, real IP: %2$s)</string>
     <string name="checker_bypass_underlying_same_ip">The underlying network is reachable, but the IP matches the VPN%1$s: split tunnel not confirmed</string>
+    <string name="checker_bypass_compare_incomplete">Split tunnel comparison is incomplete (VPN IP: %1$s, non-VPN IP: %2$s): manual review is needed</string>
 
     <!-- InstalledVpnAppDetector -->
     <string name="checker_vpn_known_apps_none">Known VPN/Proxy apps and VpnService providers: none detected</string>

@@ -294,7 +294,7 @@
     <string name="checker_bypass_xray_api">Xray gRPC API：%1$s</string>
     <string name="checker_bypass_extra_outbounds">&#160;&#160;...还有 %1$d 个 outbound</string>
     <string name="checker_bypass_vpn_not_active">Underlying network：VPN 未激活，无需执行此检查</string>
-    <string name="checker_bypass_vpn_network_binding">VPN network binding：当默认网络不是 VPN 时，应用通过显式绑定到 VPN Network 获取了 IP %1$s</string>
+    <string name="checker_bypass_vpn_network_binding">VPN network binding：应用同时访问到了默认非 VPN 路径和 VPN Network（VPN IP：%1$s，默认 IP：%2$s）</string>
     <string name="checker_bypass_vpn_bound_ip">通过显式绑定到 VPN Network 获得的 IP：%1$s</string>
     <string name="checker_bypass_tun_probe_success">TUN active probe：通过 VPN Network 发起的请求返回了 IP %1$s（TUN 是一个可路由的活动接口）</string>
     <string name="checker_bypass_tun_probe_failure">TUN active probe：通过 VPN Network 发起的请求不可用（接口被阻止或被 filtered）</string>

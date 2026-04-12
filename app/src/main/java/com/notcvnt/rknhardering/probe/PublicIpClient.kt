@@ -1,5 +1,6 @@
 package com.notcvnt.rknhardering.probe
 
+import android.net.Network
 import com.notcvnt.rknhardering.network.DnsResolverConfig
 import com.notcvnt.rknhardering.network.ResolverNetworkStack
 import java.io.IOException
@@ -23,6 +24,7 @@ object PublicIpClient {
         timeoutMs: Int = 7000,
         proxy: Proxy? = null,
         resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
+        network: Network? = null,
     ): Result<String> {
         return try {
             val response = ResolverNetworkStack.execute(
@@ -35,6 +37,7 @@ object PublicIpClient {
                 timeoutMs = timeoutMs,
                 config = resolverConfig,
                 proxy = proxy,
+                network = network,
             )
             val code = response.code
             if (code !in 200..299) {
@@ -97,10 +100,11 @@ object PublicIpClient {
     fun resolveDnsRecords(
         endpoint: String,
         resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
+        network: Network? = null,
     ): DnsRecords {
         return try {
             val host = java.net.URL(endpoint).host
-            val allAddresses = ResolverNetworkStack.lookup(host, resolverConfig)
+            val allAddresses = ResolverNetworkStack.lookup(host, resolverConfig, network)
             DnsRecords(
                 ipv4Records = allAddresses
                     .filterIsInstance<Inet4Address>()

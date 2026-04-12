@@ -7,6 +7,7 @@ import com.notcvnt.rknhardering.model.EvidenceConfidence
 import com.notcvnt.rknhardering.model.EvidenceItem
 import com.notcvnt.rknhardering.model.EvidenceSource
 import com.notcvnt.rknhardering.model.Finding
+import com.notcvnt.rknhardering.network.DnsResolverConfig
 import com.notcvnt.rknhardering.probe.IfconfigClient
 import com.notcvnt.rknhardering.probe.MtProtoProber
 import com.notcvnt.rknhardering.probe.ProxyEndpoint
@@ -23,6 +24,11 @@ import kotlinx.coroutines.coroutineScope
 
 object BypassChecker {
 
+    internal data class UnderlyingEvaluation(
+        val detected: Boolean,
+        val needsReview: Boolean,
+    )
+
     enum class ProgressLine {
         BYPASS,
         XRAY_API,
@@ -37,6 +43,7 @@ object BypassChecker {
 
     suspend fun check(
         context: Context,
+        resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
         portRange: String = "full",
         portRangeStart: Int = 1024,
         portRangeEnd: Int = 65535,
@@ -150,7 +157,7 @@ object BypassChecker {
                     detail = context.getString(R.string.checker_bypass_progress_underlying_detail),
                 ),
             )
-            UnderlyingNetworkProber.probe(context)
+            UnderlyingNetworkProber.probe(context, resolverConfig)
         }
 
         val proxyEndpoint = proxyDeferred.await()
@@ -159,7 +166,7 @@ object BypassChecker {
 
         reportProxyResult(context, proxyEndpoint, findings, evidence)
         reportXrayApiResult(context, xrayApiScanResult, findings, evidence)
-        val networkPathBypass = reportUnderlyingNetworkResult(context, underlyingResult, findings, evidence)
+        val underlyingEvaluation = reportUnderlyingNetworkResult(context, underlyingResult, findings, evidence)
 
         var directIp: String? = null
         var proxyIp: String? = null
@@ -174,8 +181,10 @@ object BypassChecker {
                 ),
             )
 
-            val directDeferred = async { IfconfigClient.fetchDirectIp() }
-            val proxyIpDeferred = async { IfconfigClient.fetchIpViaProxy(proxyEndpoint) }
+            val directDeferred = async { IfconfigClient.fetchDirectIp(resolverConfig = resolverConfig) }
+            val proxyIpDeferred = async {
+                IfconfigClient.fetchIpViaProxy(proxyEndpoint, resolverConfig = resolverConfig)
+            }
 
             directIp = directDeferred.await().getOrNull()
             proxyIp = proxyIpDeferred.await().getOrNull()
@@ -245,8 +254,8 @@ object BypassChecker {
             }
         }
 
-        val detected = confirmedBypass || xrayApiScanResult != null || networkPathBypass
-        val needsReview = !detected && proxyEndpoint != null
+        val detected = confirmedBypass || xrayApiScanResult != null || underlyingEvaluation.detected
+        val needsReview = !detected && (proxyEndpoint != null || underlyingEvaluation.needsReview)
 
         BypassResult(
             proxyEndpoint = proxyEndpoint,
@@ -386,116 +395,139 @@ object BypassChecker {
         result: UnderlyingNetworkProber.ProbeResult,
         findings: MutableList<Finding>,
         evidence: MutableList<EvidenceItem>,
-    ): Boolean {
+    ): UnderlyingEvaluation {
         if (!result.vpnActive) {
             findings.add(Finding(context.getString(R.string.checker_bypass_vpn_not_active)))
-            return false
+            return UnderlyingEvaluation(detected = false, needsReview = false)
         }
 
         var detected = false
+        var needsReview = false
         val unavailable = context.getString(R.string.checker_bypass_ip_unavailable)
-
-        when {
-            result.vpnIp != null &&
-                result.activeNetworkIsVpn == false &&
-                result.underlyingReachable -> {
-                findings.add(
-                    Finding(
-                        description = context.getString(
-                            R.string.checker_bypass_vpn_network_binding,
-                            result.vpnIp,
-                        ),
-                        detected = true,
-                        source = EvidenceSource.VPN_NETWORK_BINDING,
-                        confidence = EvidenceConfidence.HIGH,
-                    ),
-                )
-                evidence.add(
-                    EvidenceItem(
-                        source = EvidenceSource.VPN_NETWORK_BINDING,
-                        detected = true,
-                        confidence = EvidenceConfidence.HIGH,
-                        description = "App reached internet via explicit VPN Network binding while default network was non-VPN",
-                    ),
-                )
-                detected = true
-            }
-            result.vpnIp != null -> {
-                findings.add(
-                    Finding(
-                        description = context.getString(R.string.checker_bypass_vpn_bound_ip, result.vpnIp),
-                        isInformational = true,
-                        source = EvidenceSource.VPN_NETWORK_BINDING,
-                    ),
-                )
-            }
+        val vpnIpLabel = result.vpnIp ?: unavailable
+        val nonVpnIpLabel = result.underlyingIp ?: unavailable
+        val ipsAreDifferent = result.vpnIp != null && result.underlyingIp != null && result.vpnIp != result.underlyingIp
+        val hasComparableIps = result.vpnIp != null && result.underlyingIp != null
+        val reviewSource = if (result.activeNetworkIsVpn == false) {
+            EvidenceSource.VPN_NETWORK_BINDING
+        } else {
+            EvidenceSource.VPN_GATEWAY_LEAK
         }
 
-        if (result.vpnActive) {
-            if (result.vpnIp != null) {
-                findings.add(
-                    Finding(
-                        description = context.getString(
-                            R.string.checker_bypass_tun_probe_success,
-                            result.vpnIp,
-                        ),
-                        isInformational = true,
-                        source = EvidenceSource.TUN_ACTIVE_PROBE,
-                    ),
-                )
-            } else {
-                findings.add(
-                    Finding(
-                        description = context.getString(R.string.checker_bypass_tun_probe_failure),
-                        isInformational = true,
-                        source = EvidenceSource.TUN_ACTIVE_PROBE,
-                    ),
-                )
-            }
-        }
-
-        if (result.activeNetworkIsVpn == false) {
-            if (result.underlyingIp != null) {
-                findings.add(
-                    Finding(
-                        description = context.getString(R.string.checker_bypass_default_non_vpn_ip, result.underlyingIp),
-                        isInformational = true,
-                    ),
-                )
-            }
-            return detected
-        }
-
-        if (!result.underlyingReachable) {
-            findings.add(Finding(context.getString(R.string.checker_bypass_underlying_unreachable)))
-            return false
-        }
-
-        if (result.vpnIp == null) {
+        if (result.vpnIp != null) {
             findings.add(
                 Finding(
                     description = context.getString(
-                        R.string.checker_bypass_gateway_leak,
-                        unavailable,
-                        result.underlyingIp ?: unavailable,
+                        R.string.checker_bypass_tun_probe_success,
+                        result.vpnIp,
                     ),
-                    detected = true,
-                    source = EvidenceSource.VPN_GATEWAY_LEAK,
-                    confidence = EvidenceConfidence.HIGH,
+                    isInformational = true,
+                    source = EvidenceSource.TUN_ACTIVE_PROBE,
                 ),
             )
-            evidence.add(
-                EvidenceItem(
-                    source = EvidenceSource.VPN_GATEWAY_LEAK,
-                    detected = true,
-                    confidence = EvidenceConfidence.HIGH,
-                    description = "App can reach internet bypassing VPN tunnel via underlying network while VPN-bound IP probe is unavailable",
+        } else {
+            val description = result.vpnError
+                ?.takeIf { it.isNotBlank() }
+                ?.let { context.getString(R.string.checker_bypass_tun_probe_failure_reason, it) }
+                ?: context.getString(R.string.checker_bypass_tun_probe_failure)
+            findings.add(
+                Finding(
+                    description = description,
+                    isInformational = true,
+                    source = EvidenceSource.TUN_ACTIVE_PROBE,
                 ),
             )
-            return true
         }
 
-        val ipsAreDifferent = result.underlyingIp != null && result.vpnIp != result.underlyingIp
+        if (result.activeNetworkIsVpn == false && result.underlyingIp != null) {
+            findings.add(
+                Finding(
+                    description = context.getString(R.string.checker_bypass_default_non_vpn_ip, result.underlyingIp),
+                    isInformational = true,
+                ),
+            )
+        }
+
+        if (result.activeNetworkIsVpn == false) {
+            when {
+                ipsAreDifferent -> {
+                    findings.add(
+                        Finding(
+                            description = context.getString(
+                                R.string.checker_bypass_vpn_network_binding,
+                                result.vpnIp,
+                                result.underlyingIp,
+                            ),
+                            detected = true,
+                            source = EvidenceSource.VPN_NETWORK_BINDING,
+                            confidence = EvidenceConfidence.HIGH,
+                        ),
+                    )
+                    evidence.add(
+                        EvidenceItem(
+                            source = EvidenceSource.VPN_NETWORK_BINDING,
+                            detected = true,
+                            confidence = EvidenceConfidence.HIGH,
+                            description = "Bound VPN IP differs from the default non-VPN IP",
+                        ),
+                    )
+                    detected = true
+                }
+                hasComparableIps -> {
+                    val ipSuffix = result.underlyingIp?.let { " ($it)" }.orEmpty()
+                    findings.add(
+                        Finding(
+                            description = context.getString(R.string.checker_bypass_underlying_same_ip, ipSuffix),
+                            isInformational = true,
+                            source = EvidenceSource.VPN_NETWORK_BINDING,
+                        ),
+                    )
+                }
+                result.vpnIp != null || result.underlyingIp != null -> {
+                    findings.add(
+                        Finding(
+                            description = context.getString(
+                                R.string.checker_bypass_compare_incomplete,
+                                vpnIpLabel,
+                                nonVpnIpLabel,
+                            ),
+                            needsReview = true,
+                            source = EvidenceSource.VPN_NETWORK_BINDING,
+                            confidence = EvidenceConfidence.LOW,
+                        ),
+                    )
+                    needsReview = true
+                }
+            }
+
+            return UnderlyingEvaluation(detected = detected, needsReview = needsReview)
+        }
+
+        if (!result.underlyingReachable) {
+            val description = result.underlyingError
+                ?.takeIf { it.isNotBlank() }
+                ?.let { context.getString(R.string.checker_bypass_underlying_unreachable_reason, it) }
+                ?: context.getString(R.string.checker_bypass_underlying_unreachable)
+            findings.add(Finding(description))
+
+            if (result.vpnIp == null) {
+                findings.add(
+                    Finding(
+                        description = context.getString(
+                            R.string.checker_bypass_compare_incomplete,
+                            vpnIpLabel,
+                            nonVpnIpLabel,
+                        ),
+                        needsReview = true,
+                        source = reviewSource,
+                        confidence = EvidenceConfidence.LOW,
+                    ),
+                )
+                needsReview = true
+            }
+
+            return UnderlyingEvaluation(detected = false, needsReview = needsReview)
+        }
 
         if (ipsAreDifferent) {
             val description = context.getString(
@@ -519,20 +551,39 @@ object BypassChecker {
                     description = "App can reach internet bypassing VPN tunnel via underlying network",
                 ),
             )
-            return true
+            return UnderlyingEvaluation(detected = true, needsReview = false)
         }
 
-        val ipSuffix = result.underlyingIp?.let { " ($it)" }.orEmpty()
-        val infoDescription = context.getString(R.string.checker_bypass_underlying_same_ip, ipSuffix)
-        findings.add(
-            Finding(
-                description = infoDescription,
-                isInformational = true,
-                source = EvidenceSource.VPN_GATEWAY_LEAK,
-            ),
-        )
+        when {
+            hasComparableIps -> {
+                val ipSuffix = result.underlyingIp?.let { " ($it)" }.orEmpty()
+                val infoDescription = context.getString(R.string.checker_bypass_underlying_same_ip, ipSuffix)
+                findings.add(
+                    Finding(
+                        description = infoDescription,
+                        isInformational = true,
+                        source = EvidenceSource.VPN_GATEWAY_LEAK,
+                    ),
+                )
+            }
+            result.vpnIp != null || result.underlyingIp != null -> {
+                findings.add(
+                    Finding(
+                        description = context.getString(
+                            R.string.checker_bypass_compare_incomplete,
+                            vpnIpLabel,
+                            nonVpnIpLabel,
+                        ),
+                        needsReview = true,
+                        source = reviewSource,
+                        confidence = EvidenceConfidence.LOW,
+                    ),
+                )
+                needsReview = true
+            }
+        }
 
-        return false
+        return UnderlyingEvaluation(detected = detected, needsReview = needsReview)
     }
 
     private fun formatHostPort(host: String, port: Int): String {
