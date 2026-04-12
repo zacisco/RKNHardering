@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">RKNHardering</string>
-    <string name="github_repo_label">GitHub</string>
     <string name="github_repo_url">https://github.com/xtclovver/RKNHardering</string>
     <string name="run_check_notice">در زمان اجرای بررسی، برنامه به این دامنه‌ها درخواست شبکه ارسال می‌کند:\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ipv4-internet.yandex.net\n• ipv6-internet.yandex.net\n• 2ip.ru\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\nاگر در تنظیمات یک DNS resolver سفارشی انتخاب شده باشد، برنامه همچنین به آدرس‌های IP آن یا دامنه DoH متصل می‌شود.\n\nبا لمس دکمه «اجرای بررسی»، موافقت می‌کنید که این درخواست‌های شبکه از دستگاه شما ارسال شوند.\n\nبرنامه لاگ این درخواست‌ها را نگه نمی‌دارد. دسترسی به شبکه را می‌توان از تنظیمات برنامه غیرفعال کرد.</string>
 
@@ -76,8 +75,6 @@
 
     <string name="main_check_running">بررسی در حال انجام است. کارت‌ها هم‌زمان با رسیدن داده‌ها به‌روزرسانی می‌شوند.</string>
     <string name="main_check_stopped">بررسی متوقف شد</string>
-    <string name="main_status_scanning">در حال اسکن...</string>
-    <string name="main_status_preparing">در حال آماده‌سازی...</string>
     <string name="main_status_cancelled">لغو شد</string>
     <string name="main_status_stopped">متوقف شد</string>
 
@@ -208,7 +205,6 @@
     <string name="checker_ip_comp_status_ipv6_ignored">IPv6 نادیده گرفته شد</string>
     <string name="checker_ip_comp_status_ipv4_ipv6">IPv4/IPv6</string>
     <string name="checker_ip_comp_status_mismatch">ناسازگار</string>
-    <string name="checker_ip_comp_status_partial">ناقص</string>
     <string name="checker_ip_comp_status_match">یکسان</string>
     <string name="checker_ip_comp_single_ip">IP: %1$s</string>
     <string name="checker_ip_comp_single_error">خطا: %1$s</string>
@@ -217,7 +213,6 @@
     <string name="checker_ip_comp_ipv6_ignored_no_ipv4">خطاهای IPv6 نادیده گرفته شدند، اما پاسخ معتبر IPv4 وجود ندارد</string>
     <string name="checker_ip_comp_mixed_families">سرویس‌ها آدرس‌هایی از خانواده‌های متفاوت برگرداندند: %1$s</string>
     <string name="checker_ip_comp_different_ips">سرویس‌ها IPهای متفاوتی برگرداندند: %1$s</string>
-    <string name="checker_ip_comp_partial">IP برابر %1$s است، اما %2$d از %3$d سرویس پاسخ ندادند</string>
     <string name="checker_ip_comp_all_same">همه سرویس‌های پاسخ‌داده در این گروه IP %1$s را برگرداندند</string>
     <string name="checker_ip_comp_ipv6_ignored_suffix">؛ خطاهای IPv6 نادیده گرفته شد: %1$d</string>
 
@@ -280,15 +275,15 @@
     <string name="checker_indirect_dumpsys_service_error">dumpsys activity services: %1$s</string>
 
     <string name="checker_bypass_progress_port_scan_phase">اسکن پورت</string>
-    <string name="checker_bypass_progress_port_scan_detail">در حال جست‌وجوی proxyهای باز روی localhost...</string>
+    <string name="checker_bypass_progress_port_scan_detail">در حال جست‌وجوی proxyهای باز روی localhost&#8230;</string>
     <string name="checker_bypass_progress_popular_ports">پورت‌های رایج</string>
     <string name="checker_bypass_progress_full_scan">اسکن کامل</string>
     <string name="checker_bypass_progress_port_detail">پورت %1$d (%2$d%%)</string>
-    <string name="checker_bypass_progress_xray_detail">در حال جست‌وجوی gRPC API روی localhost...</string>
-    <string name="checker_bypass_progress_underlying_detail">در حال بررسی دسترسی به شبکه غیر VPN...</string>
+    <string name="checker_bypass_progress_xray_detail">در حال جست‌وجوی gRPC API روی localhost&#8230;</string>
+    <string name="checker_bypass_progress_underlying_detail">در حال بررسی دسترسی به شبکه غیر VPN&#8230;</string>
     <string name="checker_bypass_progress_ip_phase">بررسی IP</string>
-    <string name="checker_bypass_progress_ip_detail">در حال به‌دست‌آوردن IP مستقیم و IP از طریق proxy...</string>
-    <string name="checker_bypass_progress_mtproto_detail">در حال بررسی Telegram DC از طریق proxy...</string>
+    <string name="checker_bypass_progress_ip_detail">در حال به‌دست‌آوردن IP مستقیم و IP از طریق proxy&#8230;</string>
+    <string name="checker_bypass_progress_mtproto_detail">در حال بررسی Telegram DC از طریق proxy&#8230;</string>
     <string name="checker_bypass_ip_unavailable">در دسترس نیست</string>
     <string name="checker_bypass_direct_ip">IP مستقیم: %1$s</string>
     <string name="checker_bypass_proxy_ip">IP از طریق proxy: %1$s</string>
@@ -301,16 +296,21 @@
     <string name="checker_bypass_open_proxy_review_suffix"> (نیازمند تأیید دور زدن)</string>
     <string name="checker_bypass_no_xray">Xray gRPC API: پیدا نشد</string>
     <string name="checker_bypass_xray_api">Xray gRPC API: %1$s</string>
-    <string name="checker_bypass_extra_outbounds">&#160;&#160;...%1$d outbound دیگر</string>
+    <plurals name="checker_bypass_extra_outbounds">
+        <item quantity="one">&#160;&#160;&#8230;%1$d outbound دیگر</item>
+        <item quantity="other">&#160;&#160;&#8230;%1$d outbound دیگر</item>
+    </plurals>
     <string name="checker_bypass_vpn_not_active">Underlying network: VPN فعال نیست، این بررسی لازم نیست</string>
     <string name="checker_bypass_vpn_network_binding">VPN network binding: برنامه هم به مسیر پیش‌فرض غیر VPN و هم به VPN Network دسترسی دارد (VPN IP: %1$s, IP پیش‌فرض: %2$s)</string>
-    <string name="checker_bypass_vpn_bound_ip">IP از طریق bind صریح به VPN Network: %1$s</string>
     <string name="checker_bypass_tun_probe_success">TUN active probe: درخواست از طریق VPN Network، IP %1$s را برگرداند (TUN یک اینترفیس زنده و قابل مسیریابی است)</string>
     <string name="checker_bypass_tun_probe_failure">TUN active probe: درخواست از طریق VPN Network در دسترس نیست (اینترفیس مسدود یا filtered است)</string>
+    <string name="checker_bypass_tun_probe_failure_reason">بررسی فعال TUN: درخواست از طریق VPN Network با خطا شکست خورد (%1$s)</string>
     <string name="checker_bypass_default_non_vpn_ip">IP پیش‌فرض غیر VPN: %1$s</string>
     <string name="checker_bypass_underlying_unreachable">Underlying network: شبکه غیر VPN در دسترس نیست (full tunnel)</string>
+    <string name="checker_bypass_underlying_unreachable_reason">شبکه زیربنایی: شبکه غیر VPN در دسترس نیست (%1$s)</string>
     <string name="checker_bypass_gateway_leak">VPN gateway leak: برنامه می‌تواند از تونل VPN عبور کند (IP VPN: %1$s، IP واقعی: %2$s)</string>
     <string name="checker_bypass_underlying_same_ip">شبکه underlying در دسترس است، اما IP با VPN%1$s یکسان است: split tunnel تأیید نشد</string>
+    <string name="checker_bypass_compare_incomplete">مقایسه split tunnel ناقص است (IP VPN: %1$s، IP غیر VPN: %2$s): بررسی دستی لازم است</string>
 
     <string name="checker_vpn_known_apps_none">برنامه‌های شناخته‌شده VPN/Proxy و ارائه‌دهندگان VpnService: موردی پیدا نشد</string>
     <string name="checker_vpn_installed_app">برنامه نصب‌شده: %1$s (%2$s)</string>

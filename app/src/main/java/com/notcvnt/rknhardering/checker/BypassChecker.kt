@@ -399,11 +399,13 @@ object BypassChecker {
             )
         }
         if (xrayApiScanResult.outbounds.size > 10) {
+            val extraOutboundsCount = xrayApiScanResult.outbounds.size - 10
             findings.add(
                 Finding(
-                    description = context.getString(
-                        R.string.checker_bypass_extra_outbounds,
-                        xrayApiScanResult.outbounds.size - 10,
+                    description = context.resources.getQuantityString(
+                        R.plurals.checker_bypass_extra_outbounds,
+                        extraOutboundsCount,
+                        extraOutboundsCount,
                     ),
                     detected = true,
                     source = EvidenceSource.XRAY_API,

@@ -2,7 +2,6 @@ package com.notcvnt.rknhardering
 
 import android.content.Intent
 import android.content.SharedPreferences
-import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.widget.LinearLayout
@@ -11,6 +10,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.edit
+import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.doAfterTextChanged
@@ -26,6 +27,7 @@ import com.notcvnt.rknhardering.network.DnsResolverPreset
 import com.notcvnt.rknhardering.network.DnsResolverPresets
 import com.notcvnt.rknhardering.probe.ProxyScanner
 import java.text.NumberFormat
+import java.util.Locale
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -115,8 +117,8 @@ class SettingsActivity : AppCompatActivity() {
         chipGroupPortRange.check(chipId)
         customPortRangeContainer.visibility = if (portRange == "custom") View.VISIBLE else View.GONE
 
-        editPortStart.setText(prefs.getInt(PREF_PORT_RANGE_START, 1024).toString())
-        editPortEnd.setText(prefs.getInt(PREF_PORT_RANGE_END, 65535).toString())
+        editPortStart.setText(formatPortInputValue(prefs.getInt(PREF_PORT_RANGE_START, 1024)))
+        editPortEnd.setText(formatPortInputValue(prefs.getInt(PREF_PORT_RANGE_END, 65535)))
         updatePortRangePreview()
 
         loadResolverSettings()
@@ -142,7 +144,7 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun setupListeners() {
         switchSplitTunnel.setOnCheckedChangeListener { _, isChecked ->
-            prefs.edit().putBoolean(PREF_SPLIT_TUNNEL_ENABLED, isChecked).apply()
+            prefs.edit { putBoolean(PREF_SPLIT_TUNNEL_ENABLED, isChecked) }
             updatePortRangeEnabled(isChecked)
         }
 
@@ -152,7 +154,7 @@ class SettingsActivity : AppCompatActivity() {
                     .setTitle(R.string.settings_network_disable_title)
                     .setMessage(R.string.settings_network_disable_message)
                     .setPositiveButton(R.string.settings_network_disable_confirm) { _, _ ->
-                        prefs.edit().putBoolean(PREF_NETWORK_REQUESTS_ENABLED, false).apply()
+                        prefs.edit { putBoolean(PREF_NETWORK_REQUESTS_ENABLED, false) }
                     }
                     .setNegativeButton(android.R.string.cancel) { _, _ ->
                         switchNetworkRequests.isChecked = true
@@ -162,12 +164,12 @@ class SettingsActivity : AppCompatActivity() {
                     }
                     .show()
             } else {
-                prefs.edit().putBoolean(PREF_NETWORK_REQUESTS_ENABLED, true).apply()
+                prefs.edit { putBoolean(PREF_NETWORK_REQUESTS_ENABLED, true) }
             }
         }
 
         switchPrivacyMode.setOnCheckedChangeListener { _, isChecked ->
-            prefs.edit().putBoolean(PREF_PRIVACY_MODE, isChecked).apply()
+            prefs.edit { putBoolean(PREF_PRIVACY_MODE, isChecked) }
         }
 
         chipGroupPortRange.setOnCheckedStateChangeListener { _, checkedIds ->
@@ -179,7 +181,7 @@ class SettingsActivity : AppCompatActivity() {
                 R.id.chipPortCustom -> "custom"
                 else -> "full"
             }
-            prefs.edit().putString(PREF_PORT_RANGE, value).apply()
+            prefs.edit { putString(PREF_PORT_RANGE, value) }
             customPortRangeContainer.visibility = if (value == "custom") View.VISIBLE else View.GONE
             updatePortRangePreview()
         }
@@ -187,18 +189,18 @@ class SettingsActivity : AppCompatActivity() {
         chipGroupResolverMode.setOnCheckedStateChangeListener { _, checkedIds ->
             if (checkedIds.isEmpty()) return@setOnCheckedStateChangeListener
             saveCustomResolverFields()
-            prefs.edit()
-                .putString(PREF_DNS_RESOLVER_MODE, selectedResolverMode().prefValue)
-                .apply()
+            prefs.edit {
+                putString(PREF_DNS_RESOLVER_MODE, selectedResolverMode().prefValue)
+            }
             refreshResolverUi(restoreCustomValues = true)
         }
 
         chipGroupResolverPreset.setOnCheckedStateChangeListener { _, checkedIds ->
             if (checkedIds.isEmpty()) return@setOnCheckedStateChangeListener
             saveCustomResolverFields()
-            prefs.edit()
-                .putString(PREF_DNS_RESOLVER_PRESET, selectedResolverPreset().prefValue)
-                .apply()
+            prefs.edit {
+                putString(PREF_DNS_RESOLVER_PRESET, selectedResolverPreset().prefValue)
+            }
             refreshResolverUi(restoreCustomValues = true)
         }
 
@@ -231,7 +233,7 @@ class SettingsActivity : AppCompatActivity() {
                 R.id.chipThemeDark -> "dark"
                 else -> "system"
             }
-            prefs.edit().putString(PREF_THEME, value).apply()
+            prefs.edit { putString(PREF_THEME, value) }
             applyTheme(value)
         }
 
@@ -244,7 +246,7 @@ class SettingsActivity : AppCompatActivity() {
                 R.id.chipLangZh -> "zh-CN"
                 else -> ""
             }
-            prefs.edit().putString(PREF_LANGUAGE, value).commit()
+            prefs.edit { putString(PREF_LANGUAGE, value) }
             AppUiSettings.applyLanguage(value)
         }
 
@@ -253,7 +255,7 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         findViewById<MaterialCardView>(R.id.cardGithub).setOnClickListener {
-            startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(getString(R.string.github_repo_url))))
+            startActivity(Intent(Intent.ACTION_VIEW, getString(R.string.github_repo_url).toUri()))
         }
     }
 
@@ -276,12 +278,12 @@ class SettingsActivity : AppCompatActivity() {
         val end = editPortEnd.text.toString().toIntOrNull()?.coerceIn(1024, 65535) ?: 65535
         val validStart = minOf(start, end)
         val validEnd = maxOf(start, end)
-        prefs.edit()
-            .putInt(PREF_PORT_RANGE_START, validStart)
-            .putInt(PREF_PORT_RANGE_END, validEnd)
-            .apply()
-        editPortStart.setText(validStart.toString())
-        editPortEnd.setText(validEnd.toString())
+        prefs.edit {
+            putInt(PREF_PORT_RANGE_START, validStart)
+            putInt(PREF_PORT_RANGE_END, validEnd)
+        }
+        editPortStart.setText(formatPortInputValue(validStart))
+        editPortEnd.setText(formatPortInputValue(validEnd))
     }
 
     private fun updatePortRangePreview() {
@@ -390,11 +392,15 @@ class SettingsActivity : AppCompatActivity() {
     private fun saveCustomResolverFields() {
         // Presets reuse the same text fields for display, so only persist while custom is active.
         if (persistedResolverPreset() != DnsResolverPreset.CUSTOM) return
-        prefs.edit()
-            .putString(PREF_DNS_RESOLVER_DIRECT_SERVERS, editResolverDirectServers.text?.toString().orEmpty().trim())
-            .putString(PREF_DNS_RESOLVER_DOH_URL, editResolverDohUrl.text?.toString().orEmpty().trim())
-            .putString(PREF_DNS_RESOLVER_DOH_BOOTSTRAP, editResolverBootstrap.text?.toString().orEmpty().trim())
-            .apply()
+        prefs.edit {
+            putString(PREF_DNS_RESOLVER_DIRECT_SERVERS, editResolverDirectServers.text?.toString().orEmpty().trim())
+            putString(PREF_DNS_RESOLVER_DOH_URL, editResolverDohUrl.text?.toString().orEmpty().trim())
+            putString(PREF_DNS_RESOLVER_DOH_BOOTSTRAP, editResolverBootstrap.text?.toString().orEmpty().trim())
+        }
+    }
+
+    private fun formatPortInputValue(value: Int): String {
+        return String.format(Locale.US, "%d", value)
     }
 
     private fun persistedResolverPreset(): DnsResolverPreset {

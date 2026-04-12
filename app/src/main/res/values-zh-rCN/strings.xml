@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">RKNHardering</string>
-    <string name="github_repo_label">GitHub</string>
     <string name="github_repo_url">https://github.com/xtclovver/RKNHardering</string>
     <string name="run_check_notice">执行检查时，应用会向以下域名发起网络请求：\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ipv4-internet.yandex.net\n• ipv6-internet.yandex.net\n• 2ip.ru\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\n如果在设置中选择了自定义 DNS resolver，应用还会连接到其 IP 地址或 DoH 域名。\n\n点击“运行检查”即表示你同意这些网络请求将从你的设备发出。\n\n应用不会记录这些请求的日志。可以在应用设置中关闭网络访问。</string>
 
@@ -76,8 +75,6 @@
 
     <string name="main_check_running">检查正在进行中。卡片会随着数据到达实时更新。</string>
     <string name="main_check_stopped">检查已停止</string>
-    <string name="main_status_scanning">正在扫描...</string>
-    <string name="main_status_preparing">正在准备...</string>
     <string name="main_status_cancelled">已取消</string>
     <string name="main_status_stopped">已停止</string>
 
@@ -207,7 +204,6 @@
     <string name="checker_ip_comp_status_ipv6_ignored">已忽略 IPv6</string>
     <string name="checker_ip_comp_status_ipv4_ipv6">IPv4/IPv6</string>
     <string name="checker_ip_comp_status_mismatch">不一致</string>
-    <string name="checker_ip_comp_status_partial">部分</string>
     <string name="checker_ip_comp_status_match">一致</string>
     <string name="checker_ip_comp_single_ip">IP：%1$s</string>
     <string name="checker_ip_comp_single_error">错误：%1$s</string>
@@ -216,7 +212,6 @@
     <string name="checker_ip_comp_ipv6_ignored_no_ipv4">已忽略 IPv6 错误，但没有有效的 IPv4 响应</string>
     <string name="checker_ip_comp_mixed_families">服务返回了不同地址族的地址：%1$s</string>
     <string name="checker_ip_comp_different_ips">服务返回了不同的 IP：%1$s</string>
-    <string name="checker_ip_comp_partial">IP 为 %1$s，但 %2$d / %3$d 个服务未响应</string>
     <string name="checker_ip_comp_all_same">该组所有有响应的服务都返回了 IP %1$s</string>
     <string name="checker_ip_comp_ipv6_ignored_suffix">；已忽略 IPv6 错误：%1$d</string>
 
@@ -279,15 +274,15 @@
     <string name="checker_indirect_dumpsys_service_error">dumpsys activity services：%1$s</string>
 
     <string name="checker_bypass_progress_port_scan_phase">端口扫描</string>
-    <string name="checker_bypass_progress_port_scan_detail">正在查找 localhost 上的开放代理...</string>
+    <string name="checker_bypass_progress_port_scan_detail">正在查找 localhost 上的开放代理&#8230;</string>
     <string name="checker_bypass_progress_popular_ports">常用端口</string>
     <string name="checker_bypass_progress_full_scan">完整扫描</string>
     <string name="checker_bypass_progress_port_detail">端口 %1$d（%2$d%%）</string>
-    <string name="checker_bypass_progress_xray_detail">正在查找 localhost 上的 gRPC API...</string>
-    <string name="checker_bypass_progress_underlying_detail">正在检查非 VPN 网络访问能力...</string>
+    <string name="checker_bypass_progress_xray_detail">正在查找 localhost 上的 gRPC API&#8230;</string>
+    <string name="checker_bypass_progress_underlying_detail">正在检查非 VPN 网络访问能力&#8230;</string>
     <string name="checker_bypass_progress_ip_phase">IP 检查</string>
-    <string name="checker_bypass_progress_ip_detail">正在获取直接 IP 和经代理的 IP...</string>
-    <string name="checker_bypass_progress_mtproto_detail">正在通过代理检查 Telegram DC...</string>
+    <string name="checker_bypass_progress_ip_detail">正在获取直接 IP 和经代理的 IP&#8230;</string>
+    <string name="checker_bypass_progress_mtproto_detail">正在通过代理检查 Telegram DC&#8230;</string>
     <string name="checker_bypass_ip_unavailable">不可用</string>
     <string name="checker_bypass_direct_ip">直接 IP：%1$s</string>
     <string name="checker_bypass_proxy_ip">经代理的 IP：%1$s</string>
@@ -300,16 +295,20 @@
     <string name="checker_bypass_open_proxy_review_suffix">（需要确认是否存在绕过）</string>
     <string name="checker_bypass_no_xray">Xray gRPC API：未发现</string>
     <string name="checker_bypass_xray_api">Xray gRPC API：%1$s</string>
-    <string name="checker_bypass_extra_outbounds">&#160;&#160;...还有 %1$d 个 outbound</string>
+    <plurals name="checker_bypass_extra_outbounds">
+        <item quantity="other">&#160;&#160;&#8230;还有 %1$d 个 outbound</item>
+    </plurals>
     <string name="checker_bypass_vpn_not_active">Underlying network：VPN 未激活，无需执行此检查</string>
     <string name="checker_bypass_vpn_network_binding">VPN network binding：应用同时访问到了默认非 VPN 路径和 VPN Network（VPN IP：%1$s，默认 IP：%2$s）</string>
-    <string name="checker_bypass_vpn_bound_ip">通过显式绑定到 VPN Network 获得的 IP：%1$s</string>
     <string name="checker_bypass_tun_probe_success">TUN active probe：通过 VPN Network 发起的请求返回了 IP %1$s（TUN 是一个可路由的活动接口）</string>
     <string name="checker_bypass_tun_probe_failure">TUN active probe：通过 VPN Network 发起的请求不可用（接口被阻止或被 filtered）</string>
+    <string name="checker_bypass_tun_probe_failure_reason">TUN 活跃探测：通过 VPN Network 发起的请求失败（%1$s）</string>
     <string name="checker_bypass_default_non_vpn_ip">默认非 VPN IP：%1$s</string>
     <string name="checker_bypass_underlying_unreachable">Underlying network：非 VPN 网络不可用（full tunnel）</string>
+    <string name="checker_bypass_underlying_unreachable_reason">底层网络：非 VPN 网络不可用（%1$s）</string>
     <string name="checker_bypass_gateway_leak">VPN gateway leak：应用可以绕过 VPN 隧道（VPN IP：%1$s，真实 IP：%2$s）</string>
     <string name="checker_bypass_underlying_same_ip">Underlying 网络可达，但 IP 与 VPN%1$s 相同：split tunnel 未确认</string>
+    <string name="checker_bypass_compare_incomplete">Split tunnel 对比不完整（VPN IP：%1$s，非 VPN IP：%2$s），需要人工复核</string>
 
     <string name="checker_vpn_known_apps_none">已知 VPN/代理应用和 VpnService 提供方：未发现</string>
     <string name="checker_vpn_installed_app">已安装应用：%1$s（%2$s）</string>

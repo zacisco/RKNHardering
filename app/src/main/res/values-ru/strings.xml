@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">RKNHardering</string>
-    <string name="github_repo_label">GitHub</string>
     <string name="github_repo_url">https://github.com/xtclovver/RKNHardering</string>
     <string name="run_check_notice">Во время проверки приложение выполнит сетевые запросы к доменам:\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ipv4-internet.yandex.net\n• ipv6-internet.yandex.net\n• 2ip.ru\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\nЕсли в настройках выбран кастомный DNS-резолвер, приложение также будет обращаться к его IP-адресам или DoH-домену.\n\nНажимая кнопку «Запустить проверку», вы соглашаетесь, что с вашего устройства будут выполнены эти сетевые запросы.\n\nПриложение не ведет логи этих запросов. Доступ к сети можно будет отключить в настройках приложения.</string>
 
@@ -76,8 +75,6 @@
 
     <string name="main_check_running">Проверка идет. Карточки обновляются прямо по мере получения данных.</string>
     <string name="main_check_stopped">Проверка остановлена</string>
-    <string name="main_status_scanning">Сканирование...</string>
-    <string name="main_status_preparing">Подготовка...</string>
     <string name="main_status_cancelled">Отменено</string>
     <string name="main_status_stopped">Остановлено</string>
 
@@ -219,7 +216,6 @@
     <string name="checker_ip_comp_status_ipv6_ignored">IPv6 игнор</string>
     <string name="checker_ip_comp_status_ipv4_ipv6">IPv4/IPv6</string>
     <string name="checker_ip_comp_status_mismatch">Разнобой</string>
-    <string name="checker_ip_comp_status_partial">Частично</string>
     <string name="checker_ip_comp_status_match">Совпадает</string>
     <string name="checker_ip_comp_single_ip">IP: %1$s</string>
     <string name="checker_ip_comp_single_error">Ошибка: %1$s</string>
@@ -228,7 +224,6 @@
     <string name="checker_ip_comp_ipv6_ignored_no_ipv4">IPv6-ошибки проигнорированы, валидного IPv4-ответа нет</string>
     <string name="checker_ip_comp_mixed_families">Сервисы вернули адреса разных семейств: %1$s</string>
     <string name="checker_ip_comp_different_ips">Сервисы вернули разные IP: %1$s</string>
-    <string name="checker_ip_comp_partial">IP %1$s, но %2$d из %3$d сервисов не ответили</string>
     <string name="checker_ip_comp_all_same">Все ответившие сервисы группы вернули IP %1$s</string>
     <string name="checker_ip_comp_ipv6_ignored_suffix">; IPv6-ошибки проигнорированы: %1$d</string>
 
@@ -294,15 +289,15 @@
 
     <!-- BypassChecker -->
     <string name="checker_bypass_progress_port_scan_phase">Сканирование портов</string>
-    <string name="checker_bypass_progress_port_scan_detail">Поиск открытых прокси на localhost...</string>
+    <string name="checker_bypass_progress_port_scan_detail">Поиск открытых прокси на localhost&#8230;</string>
     <string name="checker_bypass_progress_popular_ports">Популярные порты</string>
     <string name="checker_bypass_progress_full_scan">Полное сканирование</string>
     <string name="checker_bypass_progress_port_detail">Порт %1$d (%2$d%%)</string>
-    <string name="checker_bypass_progress_xray_detail">Поиск gRPC API на localhost...</string>
-    <string name="checker_bypass_progress_underlying_detail">Проверка доступа к non-VPN сети...</string>
+    <string name="checker_bypass_progress_xray_detail">Поиск gRPC API на localhost&#8230;</string>
+    <string name="checker_bypass_progress_underlying_detail">Проверка доступа к non-VPN сети&#8230;</string>
     <string name="checker_bypass_progress_ip_phase">Проверка IP</string>
-    <string name="checker_bypass_progress_ip_detail">Получение прямого IP и IP через прокси...</string>
-    <string name="checker_bypass_progress_mtproto_detail">Проверка Telegram DC через прокси...</string>
+    <string name="checker_bypass_progress_ip_detail">Получение прямого IP и IP через прокси&#8230;</string>
+    <string name="checker_bypass_progress_mtproto_detail">Проверка Telegram DC через прокси&#8230;</string>
     <string name="checker_bypass_ip_unavailable">не удалось получить</string>
     <string name="checker_bypass_direct_ip">Прямой IP: %1$s</string>
     <string name="checker_bypass_proxy_ip">IP через прокси: %1$s</string>
@@ -315,10 +310,14 @@
     <string name="checker_bypass_open_proxy_review_suffix"> (требует подтверждения обхода)</string>
     <string name="checker_bypass_no_xray">Xray gRPC API: не обнаружен</string>
     <string name="checker_bypass_xray_api">Xray gRPC API: %1$s</string>
-    <string name="checker_bypass_extra_outbounds">&#160;&#160;...ещё %1$d аутбаундов</string>
+    <plurals name="checker_bypass_extra_outbounds">
+        <item quantity="one">&#160;&#160;&#8230;ещё %1$d аутбаунд</item>
+        <item quantity="few">&#160;&#160;&#8230;ещё %1$d аутбаунда</item>
+        <item quantity="many">&#160;&#160;&#8230;ещё %1$d аутбаундов</item>
+        <item quantity="other">&#160;&#160;&#8230;ещё %1$d аутбаунда</item>
+    </plurals>
     <string name="checker_bypass_vpn_not_active">Underlying network: VPN не активен, проверка не требуется</string>
     <string name="checker_bypass_vpn_network_binding">VPN network binding: приложение видит и VPN Network, и non-VPN default сеть (VPN IP: %1$s, direct IP: %2$s)</string>
-    <string name="checker_bypass_vpn_bound_ip">IP через явную привязку к VPN Network: %1$s</string>
     <string name="checker_bypass_tun_probe_success">TUN активный зонд: запрос через VPN Network вернул IP %1$s (TUN — живой маршрутизируемый интерфейс)</string>
     <string name="checker_bypass_tun_probe_failure">TUN активный зонд: запрос через VPN Network недоступен (интерфейс заблокирован или filtered)</string>
     <string name="checker_bypass_tun_probe_failure_reason">TUN активный зонд: запрос через VPN Network завершился ошибкой (%1$s)</string>

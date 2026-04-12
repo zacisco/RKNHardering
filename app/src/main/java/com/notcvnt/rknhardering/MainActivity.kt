@@ -11,21 +11,22 @@ import android.os.Bundle
 import android.provider.Settings
 import android.util.TypedValue
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.edit
 import androidx.core.content.ContextCompat
 import androidx.core.text.BidiFormatter
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.isNotEmpty
+import androidx.core.view.isVisible
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -77,7 +78,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnRunCheck: MaterialButton
     private lateinit var btnStopCheck: MaterialButton
     private lateinit var cardRunCheckNotice: MaterialCardView
-    private lateinit var resultsScrollView: ScrollView
+    private lateinit var resultsScrollView: TouchAwareScrollView
     private lateinit var textCheckStatus: TextView
     private lateinit var viewModel: CheckViewModel
     private var hasDismissedRunCheckNotice = false
@@ -143,7 +144,7 @@ class MainActivity : AppCompatActivity() {
         ActivityResultContracts.RequestMultiplePermissions(),
     ) { result ->
         markPermissionsRequested(result.keys)
-        prefs.edit().putBoolean(PREF_RATIONALE_SHOWN, true).apply()
+        prefs.edit { putBoolean(PREF_RATIONALE_SHOWN, true) }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -243,14 +244,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupResultsScrollTracking() {
-        resultsScrollView.setOnTouchListener { _, event ->
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> userTouchScrollInProgress = true
-                MotionEvent.ACTION_UP,
-                MotionEvent.ACTION_CANCEL,
-                -> userTouchScrollInProgress = false
-            }
-            false
+        resultsScrollView.onUserTouchChanged = { isTouching ->
+            userTouchScrollInProgress = isTouching
         }
         resultsScrollView.setOnScrollChangeListener { _, _, _, _, _ ->
             if (userTouchScrollInProgress && !isAutoScrollInProgress) {
@@ -282,7 +277,7 @@ class MainActivity : AppCompatActivity() {
                 launchPermissionRequest(permissions)
             }
             .setNegativeButton(getString(R.string.main_perm_skip)) { _, _ ->
-                prefs.edit().putBoolean(PREF_RATIONALE_SHOWN, true).apply()
+                prefs.edit { putBoolean(PREF_RATIONALE_SHOWN, true) }
             }
             .setCancelable(false)
             .show()
@@ -348,7 +343,7 @@ class MainActivity : AppCompatActivity() {
             ?.toMutableSet()
             ?: mutableSetOf()
         requested.addAll(permissions)
-        prefs.edit().putStringSet(PREF_REQUESTED_PERMISSIONS, requested).apply()
+        prefs.edit { putStringSet(PREF_REQUESTED_PERMISSIONS, requested) }
     }
 
     private fun hasPermissionBeenRequested(permission: String): Boolean {
@@ -630,7 +625,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showLoadingCardForStage(stage: RunningStage) {
         if (stage in completedStages) return
-        if (stage in loadingStages && cardForStage(stage).visibility == View.VISIBLE) return
+        if (stage in loadingStages && cardForStage(stage).isVisible) return
 
         loadingStages += stage
         when (stage) {
@@ -855,7 +850,11 @@ class MainActivity : AppCompatActivity() {
             else -> "..."
         }
         loadingStages.forEach { stage ->
-            statusViewForStage(stage).text = stageLoadingStatusBase(stage) + dots
+            statusViewForStage(stage).text = getString(
+                R.string.main_loading_status_progress,
+                stageLoadingStatusBase(stage),
+                dots,
+            )
         }
     }
 
@@ -911,7 +910,7 @@ class MainActivity : AppCompatActivity() {
         animate: Boolean = true,
         shouldAutoScroll: Boolean = false,
     ) {
-        val wasVisible = card.visibility == View.VISIBLE
+        val wasVisible = card.isVisible
         if (!wasVisible) {
             card.animate().cancel()
             card.visibility = View.VISIBLE
@@ -1498,7 +1497,7 @@ class MainActivity : AppCompatActivity() {
             content = narrative.reasonRows.map(::createVerdictBulletView),
         )
 
-        val hasDetails = verdictDetailsContent.childCount > 0
+        val hasDetails = verdictDetailsContent.isNotEmpty()
         verdictDetailsDivider.visibility = if (hasDetails) View.VISIBLE else View.GONE
         btnVerdictDetails.visibility = if (hasDetails) View.VISIBLE else View.GONE
         verdictDetailsContent.visibility = if (hasDetails && isVerdictDetailsExpanded) View.VISIBLE else View.GONE
@@ -1508,7 +1507,7 @@ class MainActivity : AppCompatActivity() {
     private fun addVerdictSection(title: String, content: List<View>) {
         if (content.isEmpty()) return
 
-        if (verdictDetailsContent.childCount > 0) {
+        if (verdictDetailsContent.isNotEmpty()) {
             verdictDetailsContent.addView(
                 View(this).apply {
                     layoutParams = LinearLayout.LayoutParams(

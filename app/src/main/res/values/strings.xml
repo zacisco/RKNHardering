@@ -1,6 +1,5 @@
 <resources>
     <string name="app_name">RKNHardering</string>
-    <string name="github_repo_label">GitHub</string>
     <string name="github_repo_url">https://github.com/xtclovver/RKNHardering</string>
     <string name="run_check_notice">During a check, the app will make network requests to these domains:\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ipv4-internet.yandex.net\n• ipv6-internet.yandex.net\n• 2ip.ru\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\nIf a custom DNS resolver is selected in settings, the app will also connect to its IP addresses or DoH domain.\n\nBy tapping "Run check", you agree that these network requests will be made from your device.\n\nThe app does not keep logs of these requests. Network access can be disabled in the app settings.</string>
 
@@ -59,6 +58,7 @@
     <string name="main_subtitle">VPN/Proxy self-check</string>
     <string name="main_run_check">Run check</string>
     <string name="main_stop_check">Stop</string>
+    <string name="main_card_geo_ip" translatable="false">GeoIP</string>
     <string name="main_card_ip_comparison">IP comparison</string>
     <string name="main_card_direct_signs">Direct signs</string>
     <string name="main_card_indirect_signs">Indirect signs</string>
@@ -76,13 +76,12 @@
 
     <string name="main_check_running">Check in progress. Cards update live as data arrives.</string>
     <string name="main_check_stopped">Check stopped</string>
-    <string name="main_status_scanning">Scanning...</string>
-    <string name="main_status_preparing">Preparing...</string>
     <string name="main_status_cancelled">Cancelled</string>
     <string name="main_status_stopped">Stopped</string>
 
     <string name="main_loading_status_scanning">Scanning</string>
     <string name="main_loading_status_checking">Checking</string>
+    <string name="main_loading_status_progress" translatable="false">%1$s%2$s</string>
 
     <string name="main_loading_geo_ip">Checking country, ASN, and hosting indicators.</string>
     <string name="main_loading_ip_comparison">Comparing the public IP through multiple independent services.</string>
@@ -112,6 +111,8 @@
     <string name="main_ipv6_error_ignored">IPv6 error ignored: </string>
 
     <string name="settings_port_range_preview">Localhost proxy ports to scan: %1$s (%2$s)</string>
+    <string name="settings_port_range_start_default" translatable="false">1024</string>
+    <string name="settings_port_range_end_default" translatable="false">65535</string>
     <plurals name="settings_port_word">
         <item quantity="one">%1$s port</item>
         <item quantity="other">%1$s ports</item>
@@ -217,7 +218,6 @@
     <string name="checker_ip_comp_status_ipv6_ignored">IPv6 ignored</string>
     <string name="checker_ip_comp_status_ipv4_ipv6">IPv4/IPv6</string>
     <string name="checker_ip_comp_status_mismatch">Mismatch</string>
-    <string name="checker_ip_comp_status_partial">Partial</string>
     <string name="checker_ip_comp_status_match">Match</string>
     <string name="checker_ip_comp_single_ip">IP: %1$s</string>
     <string name="checker_ip_comp_single_error">Error: %1$s</string>
@@ -226,7 +226,6 @@
     <string name="checker_ip_comp_ipv6_ignored_no_ipv4">IPv6 errors were ignored, but there is no valid IPv4 response</string>
     <string name="checker_ip_comp_mixed_families">Services returned addresses from different families: %1$s</string>
     <string name="checker_ip_comp_different_ips">Services returned different IPs: %1$s</string>
-    <string name="checker_ip_comp_partial">IP %1$s, but %2$d of %3$d services did not respond</string>
     <string name="checker_ip_comp_all_same">All responding services in the group returned IP %1$s</string>
     <string name="checker_ip_comp_ipv6_ignored_suffix">; IPv6 errors ignored: %1$d</string>
 
@@ -292,15 +291,15 @@
 
     <!-- BypassChecker -->
     <string name="checker_bypass_progress_port_scan_phase">Port scan</string>
-    <string name="checker_bypass_progress_port_scan_detail">Looking for open proxies on localhost...</string>
+    <string name="checker_bypass_progress_port_scan_detail">Looking for open proxies on localhost&#8230;</string>
     <string name="checker_bypass_progress_popular_ports">Popular ports</string>
     <string name="checker_bypass_progress_full_scan">Full scan</string>
     <string name="checker_bypass_progress_port_detail">Port %1$d (%2$d%%)</string>
-    <string name="checker_bypass_progress_xray_detail">Looking for a gRPC API on localhost...</string>
-    <string name="checker_bypass_progress_underlying_detail">Checking access to the non-VPN network...</string>
+    <string name="checker_bypass_progress_xray_detail">Looking for a gRPC API on localhost&#8230;</string>
+    <string name="checker_bypass_progress_underlying_detail">Checking access to the non-VPN network&#8230;</string>
     <string name="checker_bypass_progress_ip_phase">IP check</string>
-    <string name="checker_bypass_progress_ip_detail">Obtaining the direct IP and the IP via proxy...</string>
-    <string name="checker_bypass_progress_mtproto_detail">Checking Telegram DC via proxy...</string>
+    <string name="checker_bypass_progress_ip_detail">Obtaining the direct IP and the IP via proxy&#8230;</string>
+    <string name="checker_bypass_progress_mtproto_detail">Checking Telegram DC via proxy&#8230;</string>
     <string name="checker_bypass_ip_unavailable">unavailable</string>
     <string name="checker_bypass_direct_ip">Direct IP: %1$s</string>
     <string name="checker_bypass_proxy_ip">IP via proxy: %1$s</string>
@@ -313,10 +312,12 @@
     <string name="checker_bypass_open_proxy_review_suffix"> (requires bypass confirmation)</string>
     <string name="checker_bypass_no_xray">Xray gRPC API: not found</string>
     <string name="checker_bypass_xray_api">Xray gRPC API: %1$s</string>
-    <string name="checker_bypass_extra_outbounds">&#160;&#160;...%1$d more outbounds</string>
+    <plurals name="checker_bypass_extra_outbounds">
+        <item quantity="one">&#160;&#160;&#8230;%1$d more outbound</item>
+        <item quantity="other">&#160;&#160;&#8230;%1$d more outbounds</item>
+    </plurals>
     <string name="checker_bypass_vpn_not_active">Underlying network: VPN is not active, the check is not required</string>
     <string name="checker_bypass_vpn_network_binding">VPN network binding: the app can reach both the default non-VPN path and VPN Network (VPN IP: %1$s, default IP: %2$s)</string>
-    <string name="checker_bypass_vpn_bound_ip">IP via explicit binding to VPN Network: %1$s</string>
     <string name="checker_bypass_tun_probe_success">TUN active probe: a request via VPN Network returned IP %1$s (TUN is a live routable interface)</string>
     <string name="checker_bypass_tun_probe_failure">TUN active probe: a request via VPN Network is unavailable (the interface is blocked or filtered)</string>
     <string name="checker_bypass_tun_probe_failure_reason">TUN active probe: a request via VPN Network failed (%1$s)</string>

@@ -6,7 +6,6 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="?android:attr/colorBackground"
     android:fitsSystemWindows="true"
     tools:context=".MainActivity">
 
@@ -24,7 +23,7 @@
             app:menu="@menu/menu_main" />
     </com.google.android.material.appbar.AppBarLayout>
 
-    <ScrollView
+    <com.notcvnt.rknhardering.TouchAwareScrollView
         android:id="@+id/resultsScrollView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -136,13 +135,14 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:layout_marginEnd="8dp"
-                            android:contentDescription="status" />
+                            android:contentDescription="@null"
+                            android:importantForAccessibility="no" />
 
                         <TextView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="GeoIP"
+                            android:text="@string/main_card_geo_ip"
                             android:textColor="?android:attr/textColorPrimary"
                             android:textSize="18sp"
                             android:textStyle="bold" />
@@ -205,7 +205,8 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:layout_marginEnd="8dp"
-                            android:contentDescription="status" />
+                            android:contentDescription="@null"
+                            android:importantForAccessibility="no" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -266,7 +267,8 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:layout_marginEnd="8dp"
-                            android:contentDescription="status" />
+                            android:contentDescription="@null"
+                            android:importantForAccessibility="no" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -335,7 +337,8 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:layout_marginEnd="8dp"
-                            android:contentDescription="status" />
+                            android:contentDescription="@null"
+                            android:importantForAccessibility="no" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -388,7 +391,8 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:layout_marginEnd="8dp"
-                            android:contentDescription="status" />
+                            android:contentDescription="@null"
+                            android:importantForAccessibility="no" />
 
                         <TextView
                             android:layout_width="0dp"
@@ -457,13 +461,14 @@
                             android:layout_width="24dp"
                             android:layout_height="24dp"
                             android:layout_marginEnd="8dp"
-                            android:contentDescription="status" />
+                            android:contentDescription="@null"
+                            android:importantForAccessibility="no" />
 
                         <TextView
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:text="Split tunnel bypass"
+                            android:text="@string/settings_split_tunnel"
                             android:textColor="?android:attr/textColorPrimary"
                             android:textSize="18sp"
                             android:textStyle="bold" />
@@ -521,7 +526,8 @@
                             android:layout_width="48dp"
                             android:layout_height="48dp"
                             android:layout_marginBottom="12dp"
-                            android:contentDescription="verdict" />
+                            android:contentDescription="@null"
+                            android:importantForAccessibility="no" />
 
                         <TextView
                             android:id="@+id/textVerdict"
@@ -577,5 +583,5 @@
             </com.google.android.material.card.MaterialCardView>
 
         </LinearLayout>
-    </ScrollView>
+    </com.notcvnt.rknhardering.TouchAwareScrollView>
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

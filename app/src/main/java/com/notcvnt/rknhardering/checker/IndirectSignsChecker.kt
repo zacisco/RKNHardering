@@ -177,7 +177,7 @@ object IndirectSignsChecker {
         return try {
             val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
             val activeNetwork = cm.activeNetwork
-            cm.allNetworks.mapNotNull { network ->
+            allNetworksSnapshot(cm).mapNotNull { network ->
                 val caps = cm.getNetworkCapabilities(network) ?: return@mapNotNull null
                 val linkProperties = cm.getLinkProperties(network) ?: return@mapNotNull null
                 if (!caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
@@ -215,6 +215,11 @@ object IndirectSignsChecker {
         } catch (_: Exception) {
             emptyList()
         }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun allNetworksSnapshot(cm: ConnectivityManager): Array<android.net.Network> {
+        return cm.allNetworks
     }
 
     private fun checkNotVpnCapability(

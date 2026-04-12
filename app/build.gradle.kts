@@ -101,8 +101,8 @@ dependencies {
     implementation(libs.okhttp.dnsoverhttps)
     testImplementation(libs.junit)
     testImplementation(libs.okhttp.mockwebserver)
-    testImplementation("org.robolectric:robolectric:4.14.1")
-    testImplementation("androidx.test:core:1.6.1")
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }

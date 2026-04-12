@@ -160,9 +160,11 @@ object LocationSignalsChecker {
     }
 
     private fun collectSimCards(context: Context, tm: TelephonyManager): List<SimCardInfo> {
-        val sm = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE)
-                as? android.telephony.SubscriptionManager
-        val subscriptions = runCatching { sm?.activeSubscriptionInfoList }.getOrNull()
+        val subscriptions = if (hasPermission(context, Manifest.permission.READ_PHONE_STATE)) {
+            getActiveSubscriptions(context)
+        } else {
+            null
+        }
 
         if (!subscriptions.isNullOrEmpty()) {
             return subscriptions.mapNotNull { info ->
@@ -201,6 +203,13 @@ object LocationSignalsChecker {
                 )
             )
         }.getOrElse { emptyList() }
+    }
+
+    @Suppress("MissingPermission")
+    private fun getActiveSubscriptions(context: Context): List<android.telephony.SubscriptionInfo>? {
+        val subscriptionManager = context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE)
+                as? android.telephony.SubscriptionManager
+        return runCatching { subscriptionManager?.activeSubscriptionInfoList }.getOrNull()
     }
 
     private suspend fun collectCellCandidates(
@@ -387,7 +396,7 @@ object LocationSignalsChecker {
 
     private fun toWifiLookupCandidate(scanResult: ScanResult): WifiLookupCandidate? {
         val macAddress = normalizeMacAddress(scanResult.BSSID) ?: return null
-        val ssid = normalizeSsid(scanResult.SSID) ?: return null
+        val ssid = normalizeSsid(scanResultSsid(scanResult)) ?: return null
         if (ssid.endsWith("_nomap", ignoreCase = true)) return null
 
         return WifiLookupCandidate(
@@ -408,6 +417,16 @@ object LocationSignalsChecker {
             ?.let(::normalizeOperatorCode)
     }
 
+    private fun scanResultSsid(scanResult: ScanResult): String? {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Api33Impl.scanResultSsid(scanResult)
+        } else {
+            @Suppress("DEPRECATION")
+            scanResult.SSID
+        }
+    }
+
+    @Suppress("DEPRECATION")
     private fun gsmMcc(identity: android.telephony.CellIdentityGsm): String? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             Api28Impl.gsmMcc(identity)
@@ -416,6 +435,7 @@ object LocationSignalsChecker {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun gsmMnc(identity: android.telephony.CellIdentityGsm): String? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             Api28Impl.gsmMnc(identity)
@@ -424,6 +444,7 @@ object LocationSignalsChecker {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun lteMcc(identity: android.telephony.CellIdentityLte): String? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             Api28Impl.lteMcc(identity)
@@ -432,6 +453,7 @@ object LocationSignalsChecker {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun lteMnc(identity: android.telephony.CellIdentityLte): String? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             Api28Impl.lteMnc(identity)
@@ -440,6 +462,7 @@ object LocationSignalsChecker {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun wcdmaMcc(identity: android.telephony.CellIdentityWcdma): String? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             Api28Impl.wcdmaMcc(identity)
@@ -448,6 +471,7 @@ object LocationSignalsChecker {
         }
     }
 
+    @Suppress("DEPRECATION")
     private fun wcdmaMnc(identity: android.telephony.CellIdentityWcdma): String? {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
             Api28Impl.wcdmaMnc(identity)
@@ -487,6 +511,16 @@ object LocationSignalsChecker {
         @DoNotInline
         fun wcdmaMnc(identity: android.telephony.CellIdentityWcdma): String? {
             return normalizeOperatorCode(identity.mncString)
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private object Api33Impl {
+        @DoNotInline
+        fun scanResultSsid(scanResult: ScanResult): String? {
+            return scanResult.wifiSsid
+                ?.toString()
+                ?.trim('"')
         }
     }
 
