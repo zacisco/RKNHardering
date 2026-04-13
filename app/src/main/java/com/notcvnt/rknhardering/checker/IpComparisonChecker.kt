@@ -44,6 +44,11 @@ object IpComparisonChecker {
             scope = IpCheckerScope.RU,
         ),
         EndpointSpec(
+            label = "mail.ru",
+            url = "https://ip.mail.ru",
+            scope = IpCheckerScope.RU,
+        ),
+        EndpointSpec(
             label = "ifconfig.me IPv4",
             url = "https://ipv4.ifconfig.me/ip",
             scope = IpCheckerScope.NON_RU,
