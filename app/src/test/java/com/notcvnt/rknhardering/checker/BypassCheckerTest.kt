@@ -75,33 +75,6 @@ class BypassCheckerTest {
     }
 
     @Test
-    fun `tun probe success is reported as informational finding`() {
-        val findings = mutableListOf<Finding>()
-        val evidence = mutableListOf<EvidenceItem>()
-
-        BypassChecker.reportUnderlyingNetworkResult(
-            context = context,
-            result = UnderlyingNetworkProber.ProbeResult(
-                vpnActive = true,
-                underlyingReachable = false,
-                vpnIp = "198.51.100.10",
-                underlyingIp = null,
-                activeNetworkIsVpn = true,
-            ),
-            findings = findings,
-            evidence = evidence,
-        )
-
-        assertTrue(
-            findings.any {
-                it.isInformational &&
-                    it.source == EvidenceSource.TUN_ACTIVE_PROBE &&
-                    it.description.contains("198.51.100.10")
-            },
-        )
-    }
-
-    @Test
     fun `vpn network binding requires verified underlying internet path`() {
         val findings = mutableListOf<Finding>()
         val evidence = mutableListOf<EvidenceItem>()
@@ -127,34 +100,6 @@ class BypassCheckerTest {
                 it.needsReview &&
                     it.source == EvidenceSource.VPN_NETWORK_BINDING &&
                     it.description.contains("manual review")
-            },
-        )
-    }
-
-    @Test
-    fun `tun probe failure reason is recorded when vpn path fails`() {
-        val findings = mutableListOf<Finding>()
-        val evidence = mutableListOf<EvidenceItem>()
-
-        BypassChecker.reportUnderlyingNetworkResult(
-            context = context,
-            result = UnderlyingNetworkProber.ProbeResult(
-                vpnActive = true,
-                underlyingReachable = false,
-                vpnIp = null,
-                underlyingIp = null,
-                vpnError = "timeout",
-                activeNetworkIsVpn = true,
-            ),
-            findings = findings,
-            evidence = evidence,
-        )
-
-        assertTrue(
-            findings.any {
-                it.isInformational &&
-                    it.source == EvidenceSource.TUN_ACTIVE_PROBE &&
-                    it.description.contains("timeout")
             },
         )
     }

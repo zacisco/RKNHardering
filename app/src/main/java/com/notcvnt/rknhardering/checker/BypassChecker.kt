@@ -29,6 +29,7 @@ import com.notcvnt.rknhardering.probe.UnderlyingNetworkProber
 import com.notcvnt.rknhardering.probe.XrayApiScanResult
 import com.notcvnt.rknhardering.probe.XrayApiScanner
 import com.notcvnt.rknhardering.vpn.VpnAppCatalog
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import java.net.InetAddress
@@ -79,6 +80,7 @@ object BypassChecker {
         portRange: String = "full",
         portRangeStart: Int = 1024,
         portRangeEnd: Int = 65535,
+        underlyingProbeDeferred: Deferred<UnderlyingNetworkProber.ProbeResult>? = null,
         onProgress: (suspend (Progress) -> Unit)? = null,
     ): BypassResult = coroutineScope {
         val findings = mutableListOf<Finding>()
@@ -94,7 +96,14 @@ object BypassChecker {
             popularPorts = scanPlan.popularPorts,
             scanRange = scanPlan.scanRange,
         )
-        val xrayScanner = XrayApiScanner()
+        val xrayScanner = when (scanPlan.mode) {
+            ScanMode.POPULAR_ONLY -> XrayApiScanner(
+                scanPorts = XrayApiScanner.DEFAULT_POPULAR_PORTS,
+            )
+            else -> XrayApiScanner(
+                scanRange = scanPlan.scanRange,
+            )
+        }
 
         val proxyDeferred = if (splitTunnelEnabled) {
             async {
@@ -178,7 +187,7 @@ object BypassChecker {
         }
 
         val underlyingDeferred = if (splitTunnelEnabled) {
-            async {
+            underlyingProbeDeferred ?: async {
                 onProgress?.invoke(
                     Progress(
                         line = ProgressLine.UNDERLYING_NETWORK,
@@ -556,31 +565,6 @@ object BypassChecker {
             EvidenceSource.VPN_NETWORK_BINDING
         } else {
             EvidenceSource.VPN_GATEWAY_LEAK
-        }
-
-        if (result.vpnIp != null) {
-            findings.add(
-                Finding(
-                    description = context.getString(
-                        R.string.checker_bypass_tun_probe_success,
-                        result.vpnIp,
-                    ),
-                    isInformational = true,
-                    source = EvidenceSource.TUN_ACTIVE_PROBE,
-                ),
-            )
-        } else {
-            val description = result.vpnError
-                ?.takeIf { it.isNotBlank() }
-                ?.let { context.getString(R.string.checker_bypass_tun_probe_failure_reason, it) }
-                ?: context.getString(R.string.checker_bypass_tun_probe_failure)
-            findings.add(
-                Finding(
-                    description = description,
-                    isInformational = true,
-                    source = EvidenceSource.TUN_ACTIVE_PROBE,
-                ),
-            )
         }
 
         if (result.activeNetworkIsVpn == false && result.underlyingIp != null) {

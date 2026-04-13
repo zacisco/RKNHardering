@@ -9,6 +9,7 @@ import com.notcvnt.rknhardering.model.IpCheckerGroupResult
 import com.notcvnt.rknhardering.model.IpComparisonResult
 import com.notcvnt.rknhardering.model.Verdict
 import com.notcvnt.rknhardering.network.DnsResolverConfig
+import com.notcvnt.rknhardering.probe.UnderlyingNetworkProber
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 
@@ -48,7 +49,16 @@ object VpnCheckRunner {
             async { IpComparisonChecker.check(context, resolverConfig = settings.resolverConfig) }
         } else null
 
-        val directDeferred = async { DirectSignsChecker.check(context) }
+        val tunActiveProbeDeferred = if (settings.splitTunnelEnabled) {
+            async { UnderlyingNetworkProber.probe(context, settings.resolverConfig) }
+        } else null
+
+        val directDeferred = async {
+            DirectSignsChecker.check(
+                context,
+                tunActiveProbeResult = tunActiveProbeDeferred?.await(),
+            )
+        }
         val indirectDeferred = async { IndirectSignsChecker.check(context) }
         val locationDeferred = async {
             LocationSignalsChecker.check(
@@ -69,6 +79,7 @@ object VpnCheckRunner {
                     portRange = settings.portRange,
                     portRangeStart = settings.portRangeStart,
                     portRangeEnd = settings.portRangeEnd,
+                    underlyingProbeDeferred = tunActiveProbeDeferred,
                     onProgress = { progress ->
                         onUpdate?.invoke(CheckUpdate.BypassProgress(progress))
                     },

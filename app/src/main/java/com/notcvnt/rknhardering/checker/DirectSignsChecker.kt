@@ -11,6 +11,7 @@ import com.notcvnt.rknhardering.model.EvidenceItem
 import com.notcvnt.rknhardering.model.EvidenceSource
 import com.notcvnt.rknhardering.model.Finding
 import com.notcvnt.rknhardering.model.MatchedVpnApp
+import com.notcvnt.rknhardering.probe.UnderlyingNetworkProber
 import com.notcvnt.rknhardering.vpn.InstalledVpnAppDetector
 
 object DirectSignsChecker {
@@ -27,7 +28,10 @@ object DirectSignsChecker {
     )
     private val KNOWN_PROXY_PORT_RANGES = listOf(16000..16100)
 
-    fun check(context: Context): CategoryResult {
+    fun check(
+        context: Context,
+        tunActiveProbeResult: UnderlyingNetworkProber.ProbeResult? = null,
+    ): CategoryResult {
         val findings = mutableListOf<Finding>()
         val evidence = mutableListOf<EvidenceItem>()
         val matchedApps = mutableListOf<MatchedVpnApp>()
@@ -41,6 +45,10 @@ object DirectSignsChecker {
         val systemProxyOutcome = checkSystemProxy(context, findings, evidence)
         detected = detected || systemProxyOutcome.detected
         needsReview = needsReview || systemProxyOutcome.needsReview
+
+        tunActiveProbeResult
+            ?.takeIf { it.vpnActive }
+            ?.let { reportTunActiveProbe(context, it, findings) }
 
         val appDetection = InstalledVpnAppDetector.detect(context)
         findings += appDetection.findings
@@ -282,6 +290,26 @@ object DirectSignsChecker {
             findings = findings,
             needsReview = outcome.needsReview,
             evidence = evidence,
+        )
+    }
+
+    internal fun reportTunActiveProbe(
+        context: Context,
+        result: UnderlyingNetworkProber.ProbeResult,
+        findings: MutableList<Finding>,
+    ) {
+        val description = result.vpnIp
+            ?.let { context.getString(R.string.checker_bypass_tun_probe_success, it) }
+            ?: result.vpnError
+                ?.takeIf { it.isNotBlank() }
+                ?.let { context.getString(R.string.checker_bypass_tun_probe_failure_reason, it) }
+                ?: context.getString(R.string.checker_bypass_tun_probe_failure)
+        findings.add(
+            Finding(
+                description = description,
+                isInformational = true,
+                source = EvidenceSource.TUN_ACTIVE_PROBE,
+            ),
         )
     }
 

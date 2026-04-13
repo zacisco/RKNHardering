@@ -112,7 +112,7 @@ class VerdictNarrativeTest {
             context = context,
             result = result(
                 verdict = Verdict.NOT_DETECTED,
-                bypass = bypass(
+                direct = category(
                     findings = listOf(
                         Finding(
                             description = context.getString(

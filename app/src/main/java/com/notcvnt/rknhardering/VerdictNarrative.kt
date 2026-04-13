@@ -67,7 +67,7 @@ object VerdictNarrativeBuilder {
         }
         val gatewayLeakIps = gatewayLeakFinding?.description?.let(::extractIps).orEmpty()
         val gatewayLeakIpPair = gatewayLeakIps.takeIf { it.size >= 2 }
-        val vpnProbeFinding = result.bypassResult.findings.firstOrNull {
+        val vpnProbeFinding = (result.directSigns.findings + result.bypassResult.findings).firstOrNull {
             (it.source == EvidenceSource.VPN_NETWORK_BINDING || it.source == EvidenceSource.TUN_ACTIVE_PROBE) &&
                 extractIps(it.description).isNotEmpty()
         }
@@ -290,6 +290,7 @@ object VerdictNarrativeBuilder {
             result.locationSignals.needsReview ||
             result.ipComparison.detected ||
             result.ipComparison.needsReview ||
+            result.directSigns.findings.any { it.source == EvidenceSource.TUN_ACTIVE_PROBE } ||
             result.bypassResult.callTransportLeaks.any { it.status == CallTransportStatus.NEEDS_REVIEW } ||
             result.bypassResult.findings.any {
                 it.source == EvidenceSource.TUN_ACTIVE_PROBE ||
