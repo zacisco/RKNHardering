@@ -52,4 +52,31 @@ class ProxyScannerTest {
 
         assertEquals(listOf(1080), probedPorts.distinct())
     }
+
+    @Test
+    fun `preferred proxy type keeps scanning until matching port is found`() = runBlocking {
+        val probedPorts = mutableListOf<Int>()
+        val scanner = ProxyScanner(
+            popularPorts = listOf(8080, 1080),
+            scanRange = 1024..9000,
+            probePort = { _, port, _, _ ->
+                probedPorts += port
+                when (port) {
+                    8080 -> ProxyType.HTTP
+                    1080 -> ProxyType.SOCKS5
+                    else -> null
+                }
+            },
+        )
+
+        val result = scanner.findOpenProxyEndpoint(
+            mode = ScanMode.POPULAR_ONLY,
+            manualPort = null,
+            onProgress = {},
+            preferredType = ProxyType.SOCKS5,
+        )
+
+        assertEquals(listOf(8080, 1080), probedPorts.distinct())
+        assertEquals(ProxyEndpoint("127.0.0.1", 1080, ProxyType.SOCKS5), result)
+    }
 }

@@ -83,6 +83,7 @@ object CallTransportChecker {
                 mode = ScanMode.POPULAR_ONLY,
                 manualPort = null,
                 onProgress = { _ -> },
+                preferredType = ProxyType.SOCKS5,
             )
         },
         val proxyProbe: suspend (ProxyEndpoint) -> ProxyProbeOutcome = { proxyEndpoint ->
@@ -246,7 +247,7 @@ object CallTransportChecker {
                     path = path,
                     fetchPublicIp = { fetchPublicIp(path) },
                     stunProbe = { target ->
-                        dependencies.stunProbe(target, resolverConfig, path.primaryBinding())
+                        probeStunWithFallback(dependencies, target, resolverConfig, path)
                     },
                 )
             }
@@ -270,7 +271,7 @@ object CallTransportChecker {
                         path = path,
                         fetchPublicIp = { fetchPublicIp(path) },
                         stunProbe = { target ->
-                            dependencies.stunProbe(target, resolverConfig, path.primaryBinding())
+                            probeStunWithFallback(dependencies, target, resolverConfig, path)
                         },
                         experimental = true,
                     )
@@ -442,6 +443,23 @@ object CallTransportChecker {
             ),
             experimental = experimental,
         )
+    }
+
+    private suspend fun probeStunWithFallback(
+        dependencies: Dependencies,
+        target: CallTransportTargetCatalog.CallTransportTarget,
+        resolverConfig: DnsResolverConfig,
+        path: PathDescriptor,
+    ): Result<StunBindingClient.BindingResult> {
+        var lastError: Throwable? = null
+        for (binding in path.stunBindings()) {
+            val result = dependencies.stunProbe(target, resolverConfig, binding)
+            if (result.isSuccess) {
+                return result
+            }
+            lastError = result.exceptionOrNull() ?: lastError
+        }
+        return Result.failure(lastError ?: IllegalStateException("Call transport STUN probe failed"))
     }
 
     private fun classifySignal(
@@ -760,6 +778,15 @@ object CallTransportChecker {
 
     private fun PathDescriptor.primaryBinding(): ResolverBinding? {
         return network?.let(ResolverBinding::AndroidNetworkBinding)
+    }
+
+    private fun PathDescriptor.stunBindings(): List<ResolverBinding?> {
+        val bindings = mutableListOf<ResolverBinding?>(primaryBinding())
+        val fallbackBinding = fallbackBinding()
+        if (fallbackBinding != null && fallbackBinding !in bindings) {
+            bindings += fallbackBinding
+        }
+        return bindings
     }
 
     private fun PathDescriptor.fallbackBinding(): ResolverBinding.OsDeviceBinding? {

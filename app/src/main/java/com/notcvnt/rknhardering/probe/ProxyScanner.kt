@@ -44,6 +44,7 @@ class ProxyScanner(
         mode: ScanMode,
         manualPort: Int?,
         onProgress: suspend (ScanProgress) -> Unit,
+        preferredType: ProxyType? = null,
     ): ProxyEndpoint? {
         return when (mode) {
             ScanMode.MANUAL -> {
@@ -56,23 +57,24 @@ class ProxyScanner(
                         currentPort = port,
                     ),
                 )
-                tryPort(port)
+                tryPort(port, preferredType)
             }
 
             ScanMode.AUTO -> {
-                val foundOnPopular = scanPopularPorts(onProgress)
+                val foundOnPopular = scanPopularPorts(onProgress, preferredType)
                 if (foundOnPopular != null) return foundOnPopular
-                scanFullRange(onProgress)
+                scanFullRange(onProgress, preferredType)
             }
 
             ScanMode.POPULAR_ONLY -> {
-                scanPopularPorts(onProgress)
+                scanPopularPorts(onProgress, preferredType)
             }
         }
     }
 
     private suspend fun scanPopularPorts(
         onProgress: suspend (ScanProgress) -> Unit,
+        preferredType: ProxyType?,
     ): ProxyEndpoint? {
         for ((index, port) in filteredPopularPorts.withIndex()) {
             coroutineContext.ensureActive()
@@ -84,7 +86,7 @@ class ProxyScanner(
                     currentPort = port,
                 ),
             )
-            val found = tryPort(port)
+            val found = tryPort(port, preferredType)
             if (found != null) return found
         }
         return null
@@ -92,6 +94,7 @@ class ProxyScanner(
 
     private suspend fun scanFullRange(
         onProgress: suspend (ScanProgress) -> Unit,
+        preferredType: ProxyType?,
     ): ProxyEndpoint? = withContext(Dispatchers.IO) {
         coroutineScope {
             val popularSet = filteredPopularPorts.toHashSet()
@@ -129,7 +132,7 @@ class ProxyScanner(
                                 )
                             }
 
-                            val candidate = tryPort(port)
+                            val candidate = tryPort(port, preferredType)
                             if (candidate != null) {
                                 found.compareAndSet(null, candidate)
                                 return@launch
@@ -145,9 +148,10 @@ class ProxyScanner(
         }
     }
 
-    private suspend fun tryPort(port: Int): ProxyEndpoint? = withContext(Dispatchers.IO) {
+    private suspend fun tryPort(port: Int, preferredType: ProxyType?): ProxyEndpoint? = withContext(Dispatchers.IO) {
         for (host in loopbackHosts) {
             val type = probePort(host, port, connectTimeoutMs, readTimeoutMs) ?: continue
+            if (preferredType != null && type != preferredType) continue
 
             return@withContext ProxyEndpoint(host, port, type)
         }

@@ -3,7 +3,6 @@ package com.notcvnt.rknhardering
 import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Bundle
-import android.os.PersistableBundle
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -14,8 +13,6 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.edit
 import androidx.core.net.toUri
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 import androidx.core.widget.doAfterTextChanged
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.card.MaterialCardView
@@ -63,16 +60,14 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var chipGroupTheme: ChipGroup
     private lateinit var chipGroupLanguage: ChipGroup
 
-    override fun onSaveInstanceState(outState: Bundle, outPersistentState: PersistableBundle) {
+    override fun onSaveInstanceState(outState: Bundle) {
         outState.putInt(STATE_SCROLL_POSITION, scrollView.verticalScrollbarPosition)
-
-        super.onSaveInstanceState(outState, outPersistentState)
+        super.onSaveInstanceState(outState)
     }
 
-    override fun onRestoreInstanceState(savedInstanceState: Bundle?, persistentState: PersistableBundle?) {
-        super.onRestoreInstanceState(savedInstanceState, persistentState)
-
-        scrollView.verticalScrollbarPosition = savedInstanceState?.getInt(STATE_SCROLL_POSITION, 0) ?: 0
+    override fun onRestoreInstanceState(savedInstanceState: Bundle) {
+        super.onRestoreInstanceState(savedInstanceState)
+        scrollView.verticalScrollbarPosition = savedInstanceState.getInt(STATE_SCROLL_POSITION, 0)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

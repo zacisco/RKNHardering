@@ -361,6 +361,41 @@ class CallTransportCheckerTest {
     }
 
     @Test
+    fun `underlying path retries stun probe with device binding fallback`() {
+        val observedBindings = mutableListOf<ResolverBinding?>()
+        CallTransportChecker.dependenciesOverride = CallTransportChecker.Dependencies(
+            loadCatalog = { _, _ -> catalogWithTelegramTarget() },
+            loadPaths = {
+                listOf(
+                    CallTransportChecker.PathDescriptor(
+                        path = CallTransportNetworkPath.UNDERLYING,
+                        network = newNetwork(101),
+                        interfaceName = "wlan0",
+                    ),
+                )
+            },
+            stunProbe = { _, _, binding ->
+                observedBindings += binding
+                when (binding) {
+                    is ResolverBinding.AndroidNetworkBinding -> Result.failure(IOException("primary path failed"))
+                    is ResolverBinding.OsDeviceBinding -> successBindingResult()
+                    null -> Result.failure(IOException("unexpected unbound path"))
+                }
+            },
+            publicIpFetcher = { _, _ -> Result.success("203.0.113.10") },
+        )
+
+        val results = runBlockingProbeDirect(experimental = false)
+
+        val telegram = results.first { it.service == CallTransportService.TELEGRAM }
+        assertEquals(CallTransportStatus.NEEDS_REVIEW, telegram.status)
+        assertTrue(observedBindings.any { it is ResolverBinding.AndroidNetworkBinding })
+        val fallbackBinding = observedBindings.last { it is ResolverBinding.OsDeviceBinding } as ResolverBinding.OsDeviceBinding
+        assertEquals("wlan0", fallbackBinding.interfaceName)
+        assertEquals(ResolverBinding.DnsMode.SYSTEM, fallbackBinding.dnsMode)
+    }
+
+    @Test
     fun `probeDirect probes all provided underlying paths`() {
         CallTransportChecker.dependenciesOverride = CallTransportChecker.Dependencies(
             loadCatalog = { _, _ -> catalogWithTelegramTarget() },
