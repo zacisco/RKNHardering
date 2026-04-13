@@ -30,4 +30,32 @@ class PublicIpClientTest {
     fun `extractIp rejects non ip json`() {
         assertNull(PublicIpClient.extractIp("{\"country\":\"RU\",\"city\":\"Moscow\"}"))
     }
+
+    @Test
+    fun `extractIp extracts ip from ip mail ru html`() {
+        val html = """
+            <!DOCTYPE html><html><head><title>IP</title></head>
+            <body><div class="content"><span>IP:</span><strong>1.2.3.4</strong></div></body></html>
+        """.trimIndent()
+        assertEquals("1.2.3.4", PublicIpClient.extractIp(html, endpoint = "https://ip.mail.ru"))
+    }
+
+    @Test
+    fun `extractIp rejects incidental ipv4 from html`() {
+        val html = """
+            <!DOCTYPE html><html><head><title>Error</title></head>
+            <body><div>Gateway timeout from 5.6.7.8</div></body></html>
+        """.trimIndent()
+        assertNull(PublicIpClient.extractIp(html, endpoint = "https://ip.mail.ru"))
+    }
+
+    @Test
+    fun `formatHttpError keeps html 403 concise`() {
+        val html = """
+            <!DOCTYPE html>
+            <html><body>Forbidden</body></html>
+        """.trimIndent()
+
+        assertEquals("HTTP 403", PublicIpClient.formatHttpError(403, html))
+    }
 }

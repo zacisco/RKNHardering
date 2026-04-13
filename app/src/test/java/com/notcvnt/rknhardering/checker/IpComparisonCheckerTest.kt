@@ -159,7 +159,7 @@ class IpComparisonCheckerTest {
             context,
             listOf(
                 response("Yandex IPv4", IpCheckerScope.RU, ip = "203.0.113.42"),
-                response("2ip.ru", IpCheckerScope.RU, error = "HTTP 403 // Forbidden"),
+                response("2ip.ru", IpCheckerScope.RU, error = "HTTP 403"),
                 response("ifconfig.me IPv4", IpCheckerScope.NON_RU, ip = "203.0.113.42"),
                 response("ipify", IpCheckerScope.NON_RU, ip = "203.0.113.42"),
                 response("ip.sb IPv4", IpCheckerScope.NON_RU, error = "timeout"),
@@ -178,7 +178,7 @@ class IpComparisonCheckerTest {
             context,
             listOf(
                 response("Yandex IPv4", IpCheckerScope.RU, error = "timeout"),
-                response("2ip.ru", IpCheckerScope.RU, error = "HTTP 403 // Forbidden"),
+                response("2ip.ru", IpCheckerScope.RU, error = "HTTP 403"),
                 response("ifconfig.me IPv4", IpCheckerScope.NON_RU, error = "timeout"),
                 response("ipify", IpCheckerScope.NON_RU, error = "timeout"),
             ),
