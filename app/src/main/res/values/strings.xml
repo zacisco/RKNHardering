@@ -77,9 +77,10 @@
     <string name="main_perm_skip">Skip</string>
     <string name="main_perm_all_granted">All permissions are already granted</string>
     <string name="main_perm_blocked">Permission is blocked. Open the app settings.</string>
-    <string name="main_perm_rationale">For a more accurate check, the app needs access to precise location.\n\nIt is used to read cell tower identifiers and perform geolocation lookups via BeaconDB.\n\n%s\n\nWithout these permissions, the check will still run, but some location signals and Wi-Fi scanning will be unavailable.</string>
+    <string name="main_perm_rationale">For a more accurate check, the app needs additional permissions.\n\nThey are used to read cell tower identifiers and perform geolocation lookups via BeaconDB.\n\n%s\n\nWithout these permissions, the check will still run, but some location signals, Wi-Fi scanning, and dual-SIM diagnostics will be unavailable.</string>
     <string name="main_perm_rationale_wifi_13">On Android 13+, the app also requests access to nearby Wi-Fi devices to discover nearby Wi-Fi access points.</string>
     <string name="main_perm_rationale_wifi">The app also uses Wi-Fi scanning to discover nearby access points.</string>
+    <string name="main_perm_rationale_phone_state">The app also requests phone state access to read active SIM subscriptions for dual-SIM diagnostics.</string>
 
     <string name="main_check_running">Check in progress. Cards update live as data arrives.</string>
     <string name="main_check_stopped">Check stopped</string>

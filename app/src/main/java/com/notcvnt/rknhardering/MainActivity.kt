@@ -250,18 +250,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun requiredPermissions(): Array<String> {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            arrayOf(
-                Manifest.permission.ACCESS_COARSE_LOCATION,
-                Manifest.permission.ACCESS_FINE_LOCATION,
-                Manifest.permission.NEARBY_WIFI_DEVICES,
-            )
-        } else {
-            arrayOf(
-                Manifest.permission.ACCESS_COARSE_LOCATION,
-                Manifest.permission.ACCESS_FINE_LOCATION,
-            )
-        }
+        return buildList {
+            add(Manifest.permission.ACCESS_COARSE_LOCATION)
+            add(Manifest.permission.ACCESS_FINE_LOCATION)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(Manifest.permission.NEARBY_WIFI_DEVICES)
+            }
+            if (shouldRequestPhoneStatePermission()) {
+                add(Manifest.permission.READ_PHONE_STATE)
+            }
+        }.toTypedArray()
     }
 
     private fun showPermissionRationale(permissions: Array<String> = requiredPermissions()) {
@@ -278,13 +276,23 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
+    private fun shouldRequestPhoneStatePermission(): Boolean {
+        return packageManager.hasSystemFeature(PackageManager.FEATURE_TELEPHONY) ||
+            packageManager.hasSystemFeature(PackageManager.FEATURE_TELEPHONY_SUBSCRIPTION)
+    }
+
     private fun permissionRationaleMessage(): String {
-        val wifiPermissionLine = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            getString(R.string.main_perm_rationale_wifi_13)
-        } else {
-            getString(R.string.main_perm_rationale_wifi)
+        val detailLines = buildList {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                add(getString(R.string.main_perm_rationale_wifi_13))
+            } else {
+                add(getString(R.string.main_perm_rationale_wifi))
+            }
+            if (shouldRequestPhoneStatePermission()) {
+                add(getString(R.string.main_perm_rationale_phone_state))
+            }
         }
-        return getString(R.string.main_perm_rationale, wifiPermissionLine)
+        return getString(R.string.main_perm_rationale, detailLines.joinToString("\n\n"))
     }
 
     internal fun reRequestPermissions() {

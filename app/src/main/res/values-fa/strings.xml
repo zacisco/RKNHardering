@@ -76,9 +76,10 @@
     <string name="main_perm_skip">رد کردن</string>
     <string name="main_perm_all_granted">همه مجوزها قبلاً داده شده‌اند</string>
     <string name="main_perm_blocked">مجوز مسدود شده است. تنظیمات برنامه را باز کنید.</string>
-    <string name="main_perm_rationale">برای بررسی دقیق‌تر، برنامه به دسترسی به مکان دقیق نیاز دارد.\n\nاز این دسترسی برای خواندن شناسه دکل‌های مخابراتی و انجام geolocation lookup از طریق BeaconDB استفاده می‌شود.\n\n%s\n\nبدون این مجوزها، بررسی همچنان اجرا می‌شود، اما بخشی از نشانه‌های مکان و اسکن Wi-Fi در دسترس نخواهد بود.</string>
+    <string name="main_perm_rationale">برای بررسی دقیق‌تر، برنامه به مجوزهای بیشتری نیاز دارد.\n\nاز این مجوزها برای خواندن شناسه دکل‌های مخابراتی و انجام geolocation lookup از طریق BeaconDB استفاده می‌شود.\n\n%s\n\nبدون این مجوزها، بررسی همچنان اجرا می‌شود، اما بخشی از نشانه‌های مکان، اسکن Wi-Fi و تشخیص دو سیم‌کارته در دسترس نخواهد بود.</string>
     <string name="main_perm_rationale_wifi_13">در Android 13+ برنامه همچنین برای یافتن نقاط دسترسی نزدیک، مجوز nearby Wi-Fi devices را درخواست می‌کند.</string>
     <string name="main_perm_rationale_wifi">برنامه همچنین از اسکن Wi-Fi برای یافتن نقاط دسترسی نزدیک استفاده می‌کند.</string>
+    <string name="main_perm_rationale_phone_state">برنامه همچنین مجوز وضعیت تلفن را برای خواندن اشتراک‌های فعال سیم‌کارت در تشخیص دو سیم‌کارته درخواست می‌کند.</string>
 
     <string name="main_check_running">بررسی در حال انجام است. کارت‌ها هم‌زمان با رسیدن داده‌ها به‌روزرسانی می‌شوند.</string>
     <string name="main_check_stopped">بررسی متوقف شد</string>

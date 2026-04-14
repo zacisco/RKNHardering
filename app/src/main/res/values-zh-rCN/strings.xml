@@ -76,9 +76,10 @@
     <string name="main_perm_skip">跳过</string>
     <string name="main_perm_all_granted">所有权限均已授予</string>
     <string name="main_perm_blocked">权限已被阻止。请打开应用设置。</string>
-    <string name="main_perm_rationale">为了获得更准确的检查结果，应用需要精确位置权限。\n\n该权限用于读取基站标识并通过 BeaconDB 执行 geolocation lookup。\n\n%s\n\n没有这些权限，检查仍可运行，但部分位置迹象和 Wi-Fi 扫描将不可用。</string>
+    <string name="main_perm_rationale">为了获得更准确的检查结果，应用需要额外权限。\n\n这些权限用于读取基站标识并通过 BeaconDB 执行 geolocation lookup。\n\n%s\n\n没有这些权限，检查仍可运行，但部分位置迹象、Wi-Fi 扫描和双卡诊断将不可用。</string>
     <string name="main_perm_rationale_wifi_13">在 Android 13+ 上，应用还会请求 nearby Wi-Fi devices 权限，用于发现附近的 Wi-Fi 接入点。</string>
     <string name="main_perm_rationale_wifi">应用还会使用 Wi-Fi 扫描来发现附近的接入点。</string>
+    <string name="main_perm_rationale_phone_state">应用还会请求电话状态权限，用于读取活动 SIM 订阅信息以支持双卡诊断。</string>
 
     <string name="main_check_running">检查正在进行中。卡片会随着数据到达实时更新。</string>
     <string name="main_check_stopped">检查已停止</string>

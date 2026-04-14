@@ -76,9 +76,10 @@
     <string name="main_perm_skip">Пропустить</string>
     <string name="main_perm_all_granted">Все разрешения уже выданы</string>
     <string name="main_perm_blocked">Разрешение заблокировано. Откройте настройки приложения.</string>
-    <string name="main_perm_rationale">Для более точной проверки приложению нужен доступ к точной геолокации.\n\nОн используется для чтения идентификаторов базовых станций и geolocation lookup через BeaconDB.\n\n%s\n\nБез этих разрешений проверка продолжит работать, но часть сигналов местоположения и Wi-Fi scan будут недоступны.</string>
+    <string name="main_perm_rationale">Для более точной проверки приложению нужны дополнительные разрешения.\n\nОни используются для чтения идентификаторов базовых станций и geolocation lookup через BeaconDB.\n\n%s\n\nБез этих разрешений проверка продолжит работать, но часть сигналов местоположения, Wi-Fi scan и диагностика dual-SIM будут недоступны.</string>
     <string name="main_perm_rationale_wifi_13">На Android 13+ приложение также запрашивает доступ к nearby Wi-Fi devices для поиска Wi-Fi точек поблизости.</string>
     <string name="main_perm_rationale_wifi">Приложение также использует Wi-Fi scan для поиска точек доступа поблизости.</string>
+    <string name="main_perm_rationale_phone_state">Приложение также запрашивает доступ к состоянию телефона, чтобы читать активные SIM-подписки для диагностики dual-SIM.</string>
 
     <string name="main_check_running">Проверка идет. Карточки обновляются прямо по мере получения данных.</string>
     <string name="main_check_stopped">Проверка остановлена</string>
