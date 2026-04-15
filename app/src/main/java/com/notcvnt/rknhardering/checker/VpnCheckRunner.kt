@@ -3,6 +3,7 @@ package com.notcvnt.rknhardering.checker
 import android.content.Context
 import com.notcvnt.rknhardering.R
 import com.notcvnt.rknhardering.model.BypassResult
+import com.notcvnt.rknhardering.model.CdnPullingResult
 import com.notcvnt.rknhardering.model.CategoryResult
 import com.notcvnt.rknhardering.model.CheckResult
 import com.notcvnt.rknhardering.model.IpCheckerGroupResult
@@ -21,6 +22,7 @@ data class CheckSettings(
     val xrayApiScanEnabled: Boolean = true,
     val networkRequestsEnabled: Boolean = true,
     val callTransportProbeEnabled: Boolean = false,
+    val cdnPullingEnabled: Boolean = false,
     val tunProbeDebugEnabled: Boolean = false,
     val tunProbeModeOverride: TunProbeModeOverride = TunProbeModeOverride.AUTO,
     val resolverConfig: DnsResolverConfig = DnsResolverConfig.system(),
@@ -32,6 +34,7 @@ data class CheckSettings(
 sealed interface CheckUpdate {
     data class GeoIpReady(val result: CategoryResult) : CheckUpdate
     data class IpComparisonReady(val result: IpComparisonResult) : CheckUpdate
+    data class CdnPullingReady(val result: CdnPullingResult) : CheckUpdate
     data class DirectSignsReady(val result: CategoryResult) : CheckUpdate
     data class IndirectSignsReady(val result: CategoryResult) : CheckUpdate
     data class LocationSignalsReady(val result: CategoryResult) : CheckUpdate
@@ -47,6 +50,8 @@ object VpnCheckRunner {
             { ctx, resolverConfig -> GeoIpChecker.check(ctx, resolverConfig) },
         val ipComparisonCheck: suspend (Context, DnsResolverConfig) -> IpComparisonResult =
             { ctx, resolverConfig -> IpComparisonChecker.check(ctx, resolverConfig = resolverConfig) },
+        val cdnPullingCheck: suspend (Context, DnsResolverConfig) -> CdnPullingResult =
+            { ctx, resolverConfig -> CdnPullingChecker.check(ctx, resolverConfig = resolverConfig) },
         val underlyingProbe: suspend (
             Context,
             DnsResolverConfig,
@@ -125,6 +130,10 @@ object VpnCheckRunner {
             async { dependencies.ipComparisonCheck(context, settings.resolverConfig) }
         } else null
 
+        val cdnPullingDeferred = if (settings.networkRequestsEnabled && settings.cdnPullingEnabled) {
+            async { dependencies.cdnPullingCheck(context, settings.resolverConfig) }
+        } else null
+
         val tunActiveProbeDeferred = if (settings.splitTunnelEnabled) {
             async {
                 dependencies.underlyingProbe(
@@ -187,6 +196,13 @@ object VpnCheckRunner {
                 }
             }
         }
+        val cdnPullingReadyDeferred = cdnPullingDeferred?.let { deferred ->
+            async {
+                deferred.await().also { result ->
+                    onUpdate?.invoke(CheckUpdate.CdnPullingReady(result))
+                }
+            }
+        }
         val directReadyDeferred = async {
             directDeferred.await().also { result ->
                 onUpdate?.invoke(CheckUpdate.DirectSignsReady(result))
@@ -229,6 +245,7 @@ object VpnCheckRunner {
                 responses = emptyList(),
             ),
         )
+        val emptyCdnPulling = CdnPullingResult.empty()
         val emptyBypass = BypassResult(
             proxyEndpoint = null,
             proxyOwner = null,
@@ -243,6 +260,7 @@ object VpnCheckRunner {
 
         val geoIp = geoIpReadyDeferred?.await() ?: emptyGeoIpCategory
         val ipComparison = ipComparisonReadyDeferred?.await() ?: emptyIpComparison
+        val cdnPulling = cdnPullingReadyDeferred?.await() ?: emptyCdnPulling
         val directSigns = directReadyDeferred.await()
         val indirectSigns = indirectReadyDeferred.await()
         val locationSignals = locationReadyDeferred.await()
@@ -261,6 +279,7 @@ object VpnCheckRunner {
         CheckResult(
             geoIp = geoIp,
             ipComparison = ipComparison,
+            cdnPulling = cdnPulling,
             directSigns = directSigns,
             indirectSigns = indirectSigns,
             locationSignals = locationSignals,

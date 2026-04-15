@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">RKNHardering</string>
     <string name="github_repo_url">https://github.com/xtclovver/RKNHardering</string>
-    <string name="run_check_notice">During a check, the app will make network requests to these domains:\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ip.mail.ru\n• api4.ipify.org\n• api6.ipify.org\n• 2ip.ru\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\nIf a custom DNS resolver is selected in settings, the app will also connect to its IP addresses or DoH domain.\n\nIf Call transport leak probe is enabled, the app may additionally send UDP/STUN requests to bundled Telegram targets. WhatsApp targets are used only in debug or experimental builds.\n\nIf Debug diagnostics is enabled, the app can also prepare a copyable diagnostics report from the last completed scan, even when the scan finished successfully. That report is kept only in memory until you copy it.\n\nBy tapping "Run check", you agree that these network requests will be made from your device.\n\nThe app does not keep logs of these requests. Network access can be disabled in the app settings.</string>
+    <string name="run_check_notice">During a check, the app will make network requests to these domains:\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ip.mail.ru\n• api4.ipify.org\n• api6.ipify.org\n• 2ip.ru\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\nIf a custom DNS resolver is selected in settings, the app will also connect to its IP addresses or DoH domain.\n\nIf CDN pulling is enabled, the app may additionally send HTTPS requests to redirector.googlevideo.com, rutracker.org, and meduza.io to see what public IP and trace data these endpoints return.\n\nIf Call transport leak probe is enabled, the app may additionally send UDP/STUN requests to bundled Telegram targets. WhatsApp targets are used only in debug or experimental builds.\n\nIf Debug diagnostics is enabled, the app can also prepare a copyable diagnostics report from the last completed scan, even when the scan finished successfully. That report is kept only in memory until you copy it. CDN pulling responses are included in that report.\n\nBy tapping "Run check", you agree that these network requests will be made from your device.\n\nThe app does not keep logs of these requests. Network access can be disabled in the app settings.</string>
 
     <string name="settings_title">Settings</string>
     <string name="settings_section_checks">Checks</string>
@@ -11,7 +11,7 @@
     <string name="settings_split_tunnel">Split tunnel bypass</string>
     <string name="settings_split_tunnel_desc">Port scanning takes a long time</string>
     <string name="settings_tun_probe_debug">Debug diagnostics</string>
-    <string name="settings_tun_probe_debug_desc">Keeps an in-memory diagnostics snapshot from the last completed scan and enables the Copy diagnostics button on the main screen.</string>
+    <string name="settings_tun_probe_debug_desc">Keeps an in-memory diagnostics snapshot from the last completed scan, including CDN pulling responses, and enables the Copy diagnostics button on the main screen.</string>
     <string name="settings_tun_probe_mode_title">TUN probe method</string>
     <string name="settings_tun_probe_mode_desc">Overrides the TUN public-IP probe method used during split tunnel checks.</string>
     <string name="settings_tun_probe_mode_auto">Auto</string>
@@ -29,9 +29,14 @@
     <string name="settings_port_full">Full</string>
     <string name="settings_port_custom">Custom</string>
     <string name="settings_network_requests">Network requests</string>
-    <string name="settings_network_requests_desc">GeoIP, IP comparison, BeaconDB, call transport probe</string>
+    <string name="settings_network_requests_desc">GeoIP, IP comparison, CDN pulling, BeaconDB, call transport probe</string>
     <string name="settings_network_disable_title">Disable network requests?</string>
-    <string name="settings_network_disable_message">If disabled:\n\n• GeoIP checks will not run\n• IP address comparison via external services will be disabled\n• Geolocation via BeaconDB (cell towers/Wi-Fi) will be disabled\n• Call transport leak probing will be disabled\n\nOnly local checks will remain available: direct signs, indirect signs, and port scanning</string>
+    <string name="settings_network_disable_message">If disabled:\n\n• GeoIP checks will not run\n• IP address comparison via external services will be disabled\n• CDN pulling checks will be disabled\n• Geolocation via BeaconDB (cell towers/Wi-Fi) will be disabled\n• Call transport leak probing will be disabled\n\nOnly local checks will remain available: direct signs, indirect signs, and port scanning</string>
+    <string name="settings_cdn_pulling">CDN pulling</string>
+    <string name="settings_cdn_pulling_desc">Sends HTTPS requests to Google/YouTube redirector and Cloudflare trace endpoints.</string>
+    <string name="settings_cdn_pulling_warning_title">Enable CDN pulling?</string>
+    <string name="settings_cdn_pulling_warning_message">The app will send normal web requests to Google/YouTube, rutracker.org and meduza.io. These sites may see your device public IP and return short network details like country, datacenter, or proxy mode.</string>
+    <string name="settings_cdn_pulling_warning_confirm">Enable</string>
     <string name="settings_call_transport_probe">Call transport leak probe</string>
     <string name="settings_call_transport_probe_desc">Sends additional UDP/STUN requests to bundled Telegram targets. WhatsApp tracing runs only in debug or experimental builds.</string>
     <string name="settings_network_disable_confirm">Disable</string>
@@ -76,6 +81,7 @@
     <string name="main_stop_check">Stop</string>
     <string name="main_card_geo_ip" translatable="false">GeoIP</string>
     <string name="main_card_ip_comparison">IP comparison</string>
+    <string name="main_card_cdn_pulling">CDN pulling</string>
     <string name="main_card_direct_signs">Direct signs</string>
     <string name="main_card_indirect_signs">Indirect signs</string>
     <string name="main_card_location_signals">Location signals</string>
@@ -102,6 +108,7 @@
 
     <string name="main_loading_geo_ip">Checking country, ASN, and hosting indicators.</string>
     <string name="main_loading_ip_comparison">Comparing the public IP through multiple independent services.</string>
+    <string name="main_loading_cdn_pulling">Checking what blocked or CDN-backed endpoints return about your network.</string>
     <string name="main_loading_direct">Looking for direct signs of VPNs, proxies, and installed clients.</string>
     <string name="main_loading_indirect">Checking interfaces, DNS, routes, and local technical signals.</string>
     <string name="main_loading_location">Collecting carrier, cell tower, and nearby Wi-Fi signals.</string>
@@ -257,6 +264,14 @@
     <string name="checker_ip_comp_different_ips">Services returned different IPs: %1$s</string>
     <string name="checker_ip_comp_all_same">All responding services in the group returned IP %1$s</string>
     <string name="checker_ip_comp_ipv6_ignored_suffix">; IPv6 errors ignored: %1$d</string>
+
+    <!-- CdnPullingChecker -->
+    <string name="checker_cdn_pulling_summary_error">None of the CDN targets returned usable data</string>
+    <string name="checker_cdn_pulling_summary_mixed_ips">Different CDN targets exposed different IPs: %1$s</string>
+    <string name="checker_cdn_pulling_summary_detected_full">All CDN targets exposed the same IP: %1$s</string>
+    <string name="checker_cdn_pulling_summary_detected_partial">%2$d of %3$d CDN targets responded and exposed IP %1$s</string>
+    <string name="checker_cdn_pulling_summary_detected_no_ip">%1$d of %2$d CDN targets returned trace data, but not all responses included an IP</string>
+    <string name="checker_cdn_pulling_error_unrecognized">Response format is not recognized</string>
 
     <!-- DirectSignsChecker -->
     <string name="checker_direct_category_name">Direct signs</string>

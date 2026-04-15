@@ -7,6 +7,8 @@ import com.notcvnt.rknhardering.model.CallTransportLeakResult
 import com.notcvnt.rknhardering.model.CallTransportNetworkPath
 import com.notcvnt.rknhardering.model.CallTransportProbeKind
 import com.notcvnt.rknhardering.model.CallTransportStatus
+import com.notcvnt.rknhardering.model.CdnPullingResponse
+import com.notcvnt.rknhardering.model.CdnPullingResult
 import com.notcvnt.rknhardering.model.CategoryResult
 import com.notcvnt.rknhardering.model.Finding
 import com.notcvnt.rknhardering.model.EvidenceConfidence
@@ -126,6 +128,71 @@ class DebugDiagnosticsFormatterTest {
         assertTrue(report.contains("collected: false"))
         assertTrue(report.contains("proxyChecks:"))
         assertTrue(report.contains("203.0.*.*"))
+        assertFalse(report.contains("203.0.113.64"))
+    }
+
+    @Test
+    fun `formatter includes masked cdn pulling responses and raw body`() {
+        val result = CheckResult(
+            geoIp = CategoryResult(name = "GeoIP", detected = false, findings = emptyList()),
+            ipComparison = IpComparisonResult(
+                detected = false,
+                summary = "",
+                ruGroup = IpCheckerGroupResult(
+                    title = "RU",
+                    detected = false,
+                    statusLabel = "",
+                    summary = "",
+                    responses = emptyList(),
+                ),
+                nonRuGroup = IpCheckerGroupResult(
+                    title = "NON_RU",
+                    detected = false,
+                    statusLabel = "",
+                    summary = "",
+                    responses = emptyList(),
+                ),
+            ),
+            cdnPulling = CdnPullingResult(
+                detected = true,
+                summary = "rutracker.org exposed 203.0.113.64",
+                responses = listOf(
+                    CdnPullingResponse(
+                        targetLabel = "rutracker.org",
+                        url = "https://rutracker.org/cdn-cgi/trace",
+                        ip = "203.0.113.64",
+                        importantFields = linkedMapOf("IP" to "203.0.113.64", "LOC" to "FI"),
+                        rawBody = "ip=203.0.113.64\nloc=FI",
+                    ),
+                ),
+            ),
+            directSigns = CategoryResult(name = "Direct", detected = false, findings = emptyList()),
+            indirectSigns = CategoryResult(name = "Indirect", detected = false, findings = emptyList()),
+            locationSignals = CategoryResult(name = "Location", detected = false, findings = emptyList()),
+            bypassResult = BypassResult(
+                proxyEndpoint = null,
+                directIp = null,
+                proxyIp = null,
+                xrayApiScanResult = null,
+                findings = emptyList(),
+                detected = false,
+            ),
+            verdict = Verdict.NOT_DETECTED,
+        )
+
+        val report = DebugDiagnosticsFormatter.format(
+            result = result,
+            settings = CheckSettings(tunProbeDebugEnabled = true, cdnPullingEnabled = true),
+            privacyMode = true,
+            timestampMillis = 0L,
+            appVersionName = "1.0",
+            buildType = "debug",
+        )
+
+        assertTrue(report.contains("[cdnPulling]"))
+        assertTrue(report.contains("cdnPullingEnabled: true"))
+        assertTrue(report.contains("target=rutracker.org"))
+        assertTrue(report.contains("rawBody=ip=203.0.*.*\\nloc=FI"))
         assertFalse(report.contains("203.0.113.64"))
     }
 

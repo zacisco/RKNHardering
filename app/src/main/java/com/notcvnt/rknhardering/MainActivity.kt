@@ -41,6 +41,8 @@ import com.notcvnt.rknhardering.checker.BypassChecker
 import com.notcvnt.rknhardering.checker.CheckUpdate
 import com.notcvnt.rknhardering.checker.CheckSettings
 import com.notcvnt.rknhardering.model.BypassResult
+import com.notcvnt.rknhardering.model.CdnPullingResponse
+import com.notcvnt.rknhardering.model.CdnPullingResult
 import com.notcvnt.rknhardering.model.CategoryResult
 import com.notcvnt.rknhardering.model.CheckResult
 import com.notcvnt.rknhardering.model.Finding
@@ -106,6 +108,10 @@ fun maskIpsInText(text: String): String {
     }
 }
 
+internal fun maskInfoValue(value: String, privacyMode: Boolean): String {
+    return if (privacyMode) maskIpsInText(value) else value
+}
+
 private fun isUniqueLocalIpv6(address: Inet6Address): Boolean {
     val firstByte = address.address.firstOrNull()?.toInt()?.and(0xff) ?: return false
     return (firstByte and 0xfe) == 0xfc
@@ -132,6 +138,7 @@ class MainActivity : AppCompatActivity() {
     private enum class RunningStage {
         GEO_IP,
         IP_COMPARISON,
+        CDN_PULLING,
         DIRECT,
         INDIRECT,
         LOCATION,
@@ -149,23 +156,28 @@ class MainActivity : AppCompatActivity() {
     private var processedEventCount = 0
     private lateinit var cardGeoIp: MaterialCardView
     private lateinit var cardIpComparison: MaterialCardView
+    private lateinit var cardCdnPulling: MaterialCardView
     private lateinit var cardDirect: MaterialCardView
     private lateinit var cardIndirect: MaterialCardView
     private lateinit var cardLocation: MaterialCardView
     private lateinit var cardVerdict: MaterialCardView
     private lateinit var iconGeoIp: ImageView
     private lateinit var iconIpComparison: ImageView
+    private lateinit var iconCdnPulling: ImageView
     private lateinit var iconDirect: ImageView
     private lateinit var iconIndirect: ImageView
     private lateinit var iconLocation: ImageView
     private lateinit var statusGeoIp: TextView
     private lateinit var statusIpComparison: TextView
+    private lateinit var statusCdnPulling: TextView
     private lateinit var statusDirect: TextView
     private lateinit var statusIndirect: TextView
     private lateinit var statusLocation: TextView
     private lateinit var textIpComparisonSummary: TextView
+    private lateinit var textCdnPullingSummary: TextView
     private lateinit var findingsGeoIp: LinearLayout
     private lateinit var ipComparisonGroups: LinearLayout
+    private lateinit var cdnPullingResponses: LinearLayout
     private lateinit var findingsDirect: LinearLayout
     private lateinit var findingsIndirect: LinearLayout
     private lateinit var findingsLocation: LinearLayout
@@ -269,23 +281,28 @@ class MainActivity : AppCompatActivity() {
         textCheckStatus = findViewById(R.id.textCheckStatus)
         cardGeoIp = findViewById(R.id.cardGeoIp)
         cardIpComparison = findViewById(R.id.cardIpComparison)
+        cardCdnPulling = findViewById(R.id.cardCdnPulling)
         cardDirect = findViewById(R.id.cardDirect)
         cardIndirect = findViewById(R.id.cardIndirect)
         cardLocation = findViewById(R.id.cardLocation)
         cardVerdict = findViewById(R.id.cardVerdict)
         iconGeoIp = findViewById(R.id.iconGeoIp)
         iconIpComparison = findViewById(R.id.iconIpComparison)
+        iconCdnPulling = findViewById(R.id.iconCdnPulling)
         iconDirect = findViewById(R.id.iconDirect)
         iconIndirect = findViewById(R.id.iconIndirect)
         iconLocation = findViewById(R.id.iconLocation)
         statusGeoIp = findViewById(R.id.statusGeoIp)
         statusIpComparison = findViewById(R.id.statusIpComparison)
+        statusCdnPulling = findViewById(R.id.statusCdnPulling)
         statusDirect = findViewById(R.id.statusDirect)
         statusIndirect = findViewById(R.id.statusIndirect)
         statusLocation = findViewById(R.id.statusLocation)
         textIpComparisonSummary = findViewById(R.id.textIpComparisonSummary)
+        textCdnPullingSummary = findViewById(R.id.textCdnPullingSummary)
         findingsGeoIp = findViewById(R.id.findingsGeoIp)
         ipComparisonGroups = findViewById(R.id.ipComparisonGroups)
+        cdnPullingResponses = findViewById(R.id.cdnPullingResponses)
         findingsDirect = findViewById(R.id.findingsDirect)
         findingsIndirect = findViewById(R.id.findingsIndirect)
         findingsLocation = findViewById(R.id.findingsLocation)
@@ -509,6 +526,7 @@ class MainActivity : AppCompatActivity() {
         val xrayApiScanEnabled = prefs.getBoolean(SettingsActivity.PREF_XRAY_API_SCAN_ENABLED, true)
         val networkRequestsEnabled = prefs.getBoolean(SettingsActivity.PREF_NETWORK_REQUESTS_ENABLED, true)
         val callTransportProbeEnabled = prefs.getBoolean(SettingsActivity.PREF_CALL_TRANSPORT_PROBE_ENABLED, false)
+        val cdnPullingEnabled = prefs.getBoolean(SettingsActivity.PREF_CDN_PULLING_ENABLED, false)
         val tunProbeDebugEnabled = prefs.getBoolean(SettingsActivity.PREF_TUN_PROBE_DEBUG_ENABLED, false)
         val tunProbeModeOverride = com.notcvnt.rknhardering.probe.TunProbeModeOverride.fromPref(
             prefs.getString(
@@ -535,6 +553,7 @@ class MainActivity : AppCompatActivity() {
             xrayApiScanEnabled = xrayApiScanEnabled,
             networkRequestsEnabled = networkRequestsEnabled,
             callTransportProbeEnabled = callTransportProbeEnabled,
+            cdnPullingEnabled = cdnPullingEnabled,
             tunProbeDebugEnabled = tunProbeDebugEnabled,
             tunProbeModeOverride = tunProbeModeOverride,
             resolverConfig = resolverConfig,
@@ -649,6 +668,10 @@ class MainActivity : AppCompatActivity() {
         ipComparisonGroups.removeAllViews()
         ipComparisonGroups.visibility = View.GONE
 
+        textCdnPullingSummary.text = ""
+        cdnPullingResponses.removeAllViews()
+        cdnPullingResponses.visibility = View.GONE
+
         directInfoSection.removeAllViews()
         directInfoSection.visibility = View.GONE
         directDivider.visibility = View.GONE
@@ -671,6 +694,9 @@ class MainActivity : AppCompatActivity() {
         if (settings.networkRequestsEnabled) {
             stages += RunningStage.GEO_IP
             stages += RunningStage.IP_COMPARISON
+            if (settings.cdnPullingEnabled) {
+                stages += RunningStage.CDN_PULLING
+            }
         }
         stages += RunningStage.DIRECT
         stages += RunningStage.INDIRECT
@@ -701,6 +727,12 @@ class MainActivity : AppCompatActivity() {
                 ensureCardVisible(cardIpComparison, animate = false)
                 displayIpComparison(update.result, activeCheckPrivacyMode)
                 if (animate) animateContentReveal(textIpComparisonSummary, ipComparisonGroups)
+            }
+            is CheckUpdate.CdnPullingReady -> {
+                markStageCompleted(RunningStage.CDN_PULLING)
+                ensureCardVisible(cardCdnPulling, animate = false)
+                displayCdnPulling(update.result, activeCheckPrivacyMode)
+                if (animate) animateContentReveal(textCdnPullingSummary, cdnPullingResponses)
             }
             is CheckUpdate.DirectSignsReady -> {
                 markStageCompleted(RunningStage.DIRECT)
@@ -774,6 +806,7 @@ class MainActivity : AppCompatActivity() {
                 infoDivider = geoIpDivider,
             )
             RunningStage.IP_COMPARISON -> showIpComparisonLoading(stage)
+            RunningStage.CDN_PULLING -> showCdnPullingLoading(stage)
             RunningStage.DIRECT -> showCategoryLoading(
                 stage = stage,
                 card = cardDirect,
@@ -837,6 +870,14 @@ class MainActivity : AppCompatActivity() {
         ensureCardVisible(cardIpComparison)
     }
 
+    private fun showCdnPullingLoading(stage: RunningStage) {
+        bindCardLoadingState(stage, iconCdnPulling, statusCdnPulling)
+        textCdnPullingSummary.text = stageLoadingMessage(stage)
+        cdnPullingResponses.removeAllViews()
+        cdnPullingResponses.visibility = View.GONE
+        ensureCardVisible(cardCdnPulling)
+    }
+
     private fun showBypassLoading(stage: RunningStage) {
         bindCardLoadingState(stage, iconBypass, statusBypass)
         findingsBypass.removeAllViews()
@@ -871,6 +912,7 @@ class MainActivity : AppCompatActivity() {
                     infoDivider = geoIpDivider,
                 )
                 RunningStage.IP_COMPARISON -> showIpComparisonStopped(stage)
+                RunningStage.CDN_PULLING -> showCdnPullingStopped(stage)
                 RunningStage.DIRECT -> showCategoryStopped(
                     card = cardDirect,
                     icon = iconDirect,
@@ -933,6 +975,16 @@ class MainActivity : AppCompatActivity() {
         ipComparisonGroups.removeAllViews()
         ipComparisonGroups.visibility = View.GONE
         ensureCardVisible(cardIpComparison, animate = false)
+    }
+
+    private fun showCdnPullingStopped(stage: RunningStage) {
+        iconCdnPulling.setImageResource(R.drawable.ic_help)
+        statusCdnPulling.text = getString(R.string.main_status_stopped)
+        statusCdnPulling.setTextColor(ContextCompat.getColor(this, R.color.verdict_yellow))
+        textCdnPullingSummary.text = stageStoppedMessage(stage)
+        cdnPullingResponses.removeAllViews()
+        cdnPullingResponses.visibility = View.GONE
+        ensureCardVisible(cardCdnPulling, animate = false)
     }
 
     private fun showBypassStopped(stage: RunningStage) {
@@ -1003,6 +1055,7 @@ class MainActivity : AppCompatActivity() {
         return when (stage) {
             RunningStage.GEO_IP -> getString(R.string.main_loading_geo_ip)
             RunningStage.IP_COMPARISON -> getString(R.string.main_loading_ip_comparison)
+            RunningStage.CDN_PULLING -> getString(R.string.main_loading_cdn_pulling)
             RunningStage.DIRECT -> getString(R.string.main_loading_direct)
             RunningStage.INDIRECT -> getString(R.string.main_loading_indirect)
             RunningStage.LOCATION -> getString(R.string.main_loading_location)
@@ -1021,6 +1074,7 @@ class MainActivity : AppCompatActivity() {
         return when (stage) {
             RunningStage.GEO_IP -> cardGeoIp
             RunningStage.IP_COMPARISON -> cardIpComparison
+            RunningStage.CDN_PULLING -> cardCdnPulling
             RunningStage.DIRECT -> cardDirect
             RunningStage.INDIRECT -> cardIndirect
             RunningStage.LOCATION -> cardLocation
@@ -1032,6 +1086,7 @@ class MainActivity : AppCompatActivity() {
         return when (stage) {
             RunningStage.GEO_IP -> statusGeoIp
             RunningStage.IP_COMPARISON -> statusIpComparison
+            RunningStage.CDN_PULLING -> statusCdnPulling
             RunningStage.DIRECT -> statusDirect
             RunningStage.INDIRECT -> statusIndirect
             RunningStage.LOCATION -> statusLocation
@@ -1116,6 +1171,7 @@ class MainActivity : AppCompatActivity() {
         listOf(
             cardGeoIp,
             cardIpComparison,
+            cardCdnPulling,
             cardDirect,
             cardIndirect,
             cardLocation,
@@ -1187,11 +1243,7 @@ class MainActivity : AppCompatActivity() {
         for (finding in infoFindings) {
             val parts = splitInfoFinding(finding.description)
             if (parts != null) {
-                val value = if (privacyMode && parts.first.equals("IP", ignoreCase = true)) {
-                    maskIp(parts.second)
-                } else {
-                    parts.second
-                }
+                val value = maskInfoValue(parts.second, privacyMode)
                 infoSection.addView(createInfoView(parts.first, value))
             } else {
                 infoSection.addView(createFindingView(finding, privacyMode))
@@ -1221,6 +1273,18 @@ class MainActivity : AppCompatActivity() {
                 privacyMode = privacyMode,
             ),
         )
+    }
+
+    private fun displayCdnPulling(result: CdnPullingResult, privacyMode: Boolean = false) {
+        cardCdnPulling.visibility = View.VISIBLE
+        bindCardStatus(result.detected, result.needsReview, iconCdnPulling, statusCdnPulling, hasError = result.hasError)
+        textCdnPullingSummary.text = if (privacyMode) maskIpsInText(result.summary) else result.summary
+
+        cdnPullingResponses.removeAllViews()
+        cdnPullingResponses.visibility = if (result.responses.isEmpty()) View.GONE else View.VISIBLE
+        result.responses.forEach { response ->
+            cdnPullingResponses.addView(createCdnPullingResponseView(response, privacyMode))
+        }
     }
 
     private fun createFindingView(finding: Finding, privacyMode: Boolean = false): View {
@@ -1496,6 +1560,83 @@ class MainActivity : AppCompatActivity() {
                             if (response.ignoredIpv6Error) R.color.md_on_surface_variant else R.color.status_amber,
                         ),
                     )
+                },
+            )
+        }
+
+        return container
+    }
+
+    private fun createCdnPullingResponseView(response: CdnPullingResponse, privacyMode: Boolean = false): View {
+        val container = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(0, 8.dp, 0, 8.dp)
+        }
+
+        val topRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+
+        val label = TextView(this).apply {
+            text = response.targetLabel
+            textSize = 13f
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.md_on_surface))
+            layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+        }
+
+        val valueText = when {
+            response.ip != null -> if (privacyMode) maskIp(response.ip) else response.ip
+            response.importantFields.isNotEmpty() -> getString(R.string.main_card_status_detected)
+            response.error != null -> getString(R.string.main_card_status_error)
+            else -> getString(R.string.main_card_status_clean)
+        }
+        val value = TextView(this).apply {
+            text = valueText
+            textSize = 13f
+            typeface = Typeface.MONOSPACE
+            setTextColor(
+                ContextCompat.getColor(
+                    this@MainActivity,
+                    when {
+                        response.ip != null -> R.color.status_red
+                        response.error != null -> R.color.status_amber
+                        else -> R.color.status_green
+                    },
+                ),
+            )
+        }
+
+        val url = TextView(this).apply {
+            text = response.url
+            textSize = 12f
+            setPadding(0, 4.dp, 0, 0)
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.md_on_surface_variant))
+        }
+
+        topRow.addView(label)
+        topRow.addView(value)
+        container.addView(topRow)
+        container.addView(url)
+
+        response.importantFields.forEach { (fieldLabel, fieldValue) ->
+            if (response.ip != null && fieldLabel.equals("IP", ignoreCase = true)) return@forEach
+            container.addView(
+                createInfoView(
+                    fieldLabel,
+                    maskInfoValue(fieldValue, privacyMode),
+                ),
+            )
+        }
+
+        if (!response.error.isNullOrBlank()) {
+            container.addView(
+                TextView(this).apply {
+                    text = maskInfoValue(response.error, privacyMode)
+                    textSize = 12f
+                    setPadding(0, 2.dp, 0, 0)
+                    setTextColor(ContextCompat.getColor(this@MainActivity, R.color.status_amber))
                 },
             )
         }

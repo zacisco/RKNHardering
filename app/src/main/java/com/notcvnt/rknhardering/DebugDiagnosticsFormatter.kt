@@ -3,6 +3,8 @@ package com.notcvnt.rknhardering
 import com.notcvnt.rknhardering.checker.CheckSettings
 import com.notcvnt.rknhardering.model.ActiveVpnApp
 import com.notcvnt.rknhardering.model.BypassResult
+import com.notcvnt.rknhardering.model.CdnPullingResponse
+import com.notcvnt.rknhardering.model.CdnPullingResult
 import com.notcvnt.rknhardering.model.CallTransportLeakResult
 import com.notcvnt.rknhardering.model.CategoryResult
 import com.notcvnt.rknhardering.model.CheckResult
@@ -39,6 +41,7 @@ object DebugDiagnosticsFormatter {
         builder.appendLine("proxyScanEnabled: ${settings.proxyScanEnabled}")
         builder.appendLine("xrayApiScanEnabled: ${settings.xrayApiScanEnabled}")
         builder.appendLine("networkRequestsEnabled: ${settings.networkRequestsEnabled}")
+        builder.appendLine("cdnPullingEnabled: ${settings.cdnPullingEnabled}")
         builder.appendLine("callTransportProbeEnabled: ${settings.callTransportProbeEnabled}")
         builder.appendLine("tunProbeModeOverride: ${settings.tunProbeModeOverride.name}")
         appendResolver(builder, settings)
@@ -46,6 +49,7 @@ object DebugDiagnosticsFormatter {
 
         appendCategory(builder, "geoIp", result.geoIp)
         appendIpComparison(builder, result.ipComparison)
+        appendCdnPulling(builder, result.cdnPulling)
         appendCategory(builder, "directSigns", result.directSigns)
         appendCategory(builder, "indirectSigns", result.indirectSigns)
         appendCategory(builder, "locationSignals", result.locationSignals)
@@ -149,6 +153,34 @@ object DebugDiagnosticsFormatter {
             items = bypass.xrayApiScanResult?.outbounds.orEmpty(),
             formatter = ::formatXrayOutbound,
         )
+    }
+
+    private fun appendCdnPulling(
+        builder: StringBuilder,
+        result: CdnPullingResult,
+    ) {
+        builder.appendLine()
+        builder.appendLine("[cdnPulling]")
+        builder.appendLine("detected: ${result.detected}")
+        builder.appendLine("needsReview: ${result.needsReview}")
+        builder.appendLine("hasError: ${result.hasError}")
+        builder.appendLine("summary: ${maskIpsInText(result.summary)}")
+        builder.appendLine("findings:")
+        if (result.findings.isEmpty()) {
+            builder.appendLine("- <none>")
+        } else {
+            result.findings.forEach { finding ->
+                builder.appendLine("- ${formatFinding(finding)}")
+            }
+        }
+        builder.appendLine("responses:")
+        if (result.responses.isEmpty()) {
+            builder.appendLine("- <none>")
+            return
+        }
+        result.responses.forEach { response ->
+            builder.appendLine("- ${formatCdnPullingResponse(response)}")
+        }
     }
 
     private fun appendResolver(
@@ -314,9 +346,32 @@ object DebugDiagnosticsFormatter {
         }.joinToString(" ")
     }
 
+    private fun formatCdnPullingResponse(response: CdnPullingResponse): String {
+        return buildList {
+            add("target=${response.targetLabel}")
+            add("url=${response.url}")
+            add("ip=${response.ip?.let(::maskIp) ?: "<none>"}")
+            add("error=${response.error?.let(::maskIpsInText) ?: "<none>"}")
+            add(
+                "importantFields=${
+                    response.importantFields.entries.joinToString(", ") { entry ->
+                        "${entry.key}=${maskIpsInText(entry.value)}"
+                    }.ifBlank { "<none>" }
+                }",
+            )
+            add("rawBody=${formatRawBody(response.rawBody)}")
+        }.joinToString(" ")
+    }
+
     private fun formatProxyEndpoint(bypass: BypassResult): String {
         val proxyEndpoint = bypass.proxyEndpoint ?: return "<none>"
         return "${maskHostOrIp(proxyEndpoint.host)}:${proxyEndpoint.port} (${proxyEndpoint.type})"
+    }
+
+    private fun formatRawBody(rawBody: String?): String {
+        val normalized = rawBody?.trim().orEmpty()
+        if (normalized.isBlank()) return "<none>"
+        return maskIpsInText(normalized).replace("\n", "\\n")
     }
 
     private fun formatProxyOwner(owner: LocalProxyOwner?): String {

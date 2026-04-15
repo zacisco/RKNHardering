@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">RKNHardering</string>
     <string name="github_repo_url">https://github.com/xtclovver/RKNHardering</string>
-    <string name="run_check_notice">执行检查时，应用会向以下域名发起网络请求：\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ip.mail.ru\n• api4.ipify.org\n• api6.ipify.org\n• 2ip.ru\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\n如果在设置中选择了自定义 DNS resolver，应用还会连接到其 IP 地址或 DoH 域名。\n\n如果启用了 Debug diagnostics，应用还可以基于最近一次已完成的检查生成可复制的诊断报告，即使这次检查成功完成也一样。该报告只保存在内存中，直到你复制它。\n\n点击“运行检查”即表示你同意这些网络请求将从你的设备发出。\n\n应用不会记录这些请求的日志。可以在应用设置中关闭网络访问。</string>
+    <string name="run_check_notice">执行检查时，应用会向以下域名发起网络请求：\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ip.mail.ru\n• api4.ipify.org\n• api6.ipify.org\n• 2ip.ru\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\n如果在设置中选择了自定义 DNS resolver，应用还会连接到其 IP 地址或 DoH 域名。\n\n如果启用了 CDN pulling，应用还会向 redirector.googlevideo.com、rutracker.org 和 meduza.io 发送 HTTPS 请求，以查看这些端点会返回什么公网 IP 和 trace 数据。\n\n如果启用了 Debug diagnostics，应用还可以基于最近一次已完成的检查生成可复制的诊断报告，即使这次检查成功完成也一样。该报告只保存在内存中，直到你复制它，并且也会包含 CDN pulling 的响应。\n\n点击“运行检查”即表示你同意这些网络请求将从你的设备发出。\n\n应用不会记录这些请求的日志。可以在应用设置中关闭网络访问。</string>
 
     <string name="settings_title">设置</string>
     <string name="settings_section_checks">检查</string>
@@ -11,7 +11,7 @@
     <string name="settings_split_tunnel">Split tunnel bypass</string>
     <string name="settings_split_tunnel_desc">端口扫描需要较长时间</string>
     <string name="settings_tun_probe_debug">Debug diagnostics</string>
-    <string name="settings_tun_probe_debug_desc">仅在内存中保留最近一次已完成检查的诊断快照，并在主界面启用 Copy diagnostics 按钮。</string>
+    <string name="settings_tun_probe_debug_desc">仅在内存中保留最近一次已完成检查的诊断快照（包括 CDN pulling 响应），并在主界面启用 Copy diagnostics 按钮。</string>
     <string name="settings_tun_probe_mode_title">TUN probe method</string>
     <string name="settings_tun_probe_mode_desc">覆盖 split tunnel 检查中使用的 TUN 公网 IP 探测方法。</string>
     <string name="settings_tun_probe_mode_auto">Auto</string>
@@ -29,10 +29,15 @@
     <string name="settings_port_full">完整</string>
     <string name="settings_port_custom">自定义</string>
     <string name="settings_network_requests">网络请求</string>
-    <string name="settings_network_requests_desc">GeoIP、IP 比较、BeaconDB</string>
+    <string name="settings_network_requests_desc">GeoIP、IP 比较、CDN pulling、BeaconDB</string>
     <string name="settings_network_disable_title">要禁用网络请求吗？</string>
-    <string name="settings_network_disable_message">禁用后：\n\n• GeoIP 检查将不会运行\n• 通过外部服务进行的 IP 比较将被禁用\n• 通过 BeaconDB（基站/Wi-Fi）进行的位置判断将被禁用\n\n届时只保留本地检查：直接迹象、间接迹象和端口扫描</string>
+    <string name="settings_network_disable_message">禁用后：\n\n• GeoIP 检查将不会运行\n• 通过外部服务进行的 IP 比较将被禁用\n• CDN pulling 检查将被禁用\n• 通过 BeaconDB（基站/Wi-Fi）进行的位置判断将被禁用\n• Call transport 泄露探测将被禁用\n\n届时只保留本地检查：直接迹象、间接迹象和端口扫描</string>
     <string name="settings_network_disable_confirm">禁用</string>
+    <string name="settings_cdn_pulling">CDN pulling</string>
+    <string name="settings_cdn_pulling_desc">向 Google/YouTube redirector 和 Cloudflare trace 端点发送 HTTPS 请求。</string>
+    <string name="settings_cdn_pulling_warning_title">启用 CDN pulling？</string>
+    <string name="settings_cdn_pulling_warning_message">应用会向 Google/YouTube、rutracker.org 和 meduza.io 发送普通网页请求。这些网站可能看到你设备的公网 IP，并返回国家、数据中心或代理模式等简短网络信息。</string>
+    <string name="settings_cdn_pulling_warning_confirm">启用</string>
     <string name="settings_call_transport_probe">Call transport 泄露探测</string>
     <string name="settings_call_transport_probe_desc">会向内置的 Telegram 目标发送额外的 UDP/STUN 请求。WhatsApp 跟踪仅在 debug 或 experimental 构建中运行。</string>
     <string name="settings_dns_resolver">DNS resolver</string>
@@ -75,6 +80,7 @@
     <string name="main_run_check">运行检查</string>
     <string name="main_stop_check">停止</string>
     <string name="main_card_ip_comparison">IP 比较</string>
+    <string name="main_card_cdn_pulling">CDN pulling</string>
     <string name="main_card_direct_signs">直接迹象</string>
     <string name="main_card_indirect_signs">间接迹象</string>
     <string name="main_card_location_signals">位置迹象</string>
@@ -100,6 +106,7 @@
 
     <string name="main_loading_geo_ip">正在检查国家、ASN 和托管迹象。</string>
     <string name="main_loading_ip_comparison">正在通过多个独立服务比较公网 IP。</string>
+    <string name="main_loading_cdn_pulling">正在检查被封锁或 CDN 支持的端点会返回哪些网络数据。</string>
     <string name="main_loading_direct">正在查找 VPN、代理和已安装客户端的直接迹象。</string>
     <string name="main_loading_indirect">正在检查接口、DNS、路由和本地技术迹象。</string>
     <string name="main_loading_location">正在收集运营商、基站和附近 Wi-Fi 的迹象。</string>
@@ -243,6 +250,13 @@
     <string name="checker_ip_comp_different_ips">服务返回了不同的 IP：%1$s</string>
     <string name="checker_ip_comp_all_same">该组所有有响应的服务都返回了 IP %1$s</string>
     <string name="checker_ip_comp_ipv6_ignored_suffix">；已忽略 IPv6 错误：%1$d</string>
+
+    <string name="checker_cdn_pulling_summary_error">没有任何 CDN 目标返回可用数据</string>
+    <string name="checker_cdn_pulling_summary_mixed_ips">不同 CDN 目标暴露了不同的 IP：%1$s</string>
+    <string name="checker_cdn_pulling_summary_detected_full">所有 CDN 目标都暴露了同一个 IP：%1$s</string>
+    <string name="checker_cdn_pulling_summary_detected_partial">%2$d / %3$d 个 CDN 目标响应并暴露了 IP %1$s</string>
+    <string name="checker_cdn_pulling_summary_detected_no_ip">%1$d / %2$d 个 CDN 目标返回了 trace 数据，但并非所有响应都包含 IP</string>
+    <string name="checker_cdn_pulling_error_unrecognized">无法识别响应格式</string>
 
     <string name="checker_direct_category_name">直接迹象</string>
     <string name="checker_direct_no_active_network">未找到活动网络</string>

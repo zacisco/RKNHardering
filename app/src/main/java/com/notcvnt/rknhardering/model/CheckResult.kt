@@ -226,9 +226,39 @@ data class IpComparisonResult(
     val nonRuGroup: IpCheckerGroupResult,
 )
 
+data class CdnPullingResponse(
+    val targetLabel: String,
+    val url: String,
+    val ip: String? = null,
+    val importantFields: Map<String, String> = emptyMap(),
+    val rawBody: String? = null,
+    val error: String? = null,
+)
+
+data class CdnPullingResult(
+    val detected: Boolean,
+    val needsReview: Boolean = false,
+    val hasError: Boolean = false,
+    val summary: String,
+    val responses: List<CdnPullingResponse> = emptyList(),
+    val findings: List<Finding> = emptyList(),
+) {
+    companion object {
+        fun empty(): CdnPullingResult = CdnPullingResult(
+            detected = false,
+            needsReview = false,
+            hasError = false,
+            summary = "",
+            responses = emptyList(),
+            findings = emptyList(),
+        )
+    }
+}
+
 data class CheckResult(
     val geoIp: CategoryResult,
     val ipComparison: IpComparisonResult,
+    val cdnPulling: CdnPullingResult = CdnPullingResult.empty(),
     val directSigns: CategoryResult,
     val indirectSigns: CategoryResult,
     val locationSignals: CategoryResult,

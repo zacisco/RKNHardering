@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">RKNHardering</string>
     <string name="github_repo_url">https://github.com/xtclovver/RKNHardering</string>
-    <string name="run_check_notice">در زمان اجرای بررسی، برنامه به این دامنه‌ها درخواست شبکه ارسال می‌کند:\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ip.mail.ru\n• api4.ipify.org\n• api6.ipify.org\n• 2ip.ru\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\nاگر در تنظیمات یک DNS resolver سفارشی انتخاب شده باشد، برنامه همچنین به آدرس‌های IP آن یا دامنه DoH متصل می‌شود.\n\nاگر Debug diagnostics فعال باشد، برنامه می‌تواند از آخرین بررسی تکمیل‌شده یک گزارش تشخیصی قابل کپی بسازد، حتی اگر بررسی با موفقیت تمام شده باشد. این گزارش فقط تا زمان کپی شدن در حافظه نگه داشته می‌شود.\n\nبا لمس دکمه «اجرای بررسی»، موافقت می‌کنید که این درخواست‌های شبکه از دستگاه شما ارسال شوند.\n\nبرنامه لاگ این درخواست‌ها را نگه نمی‌دارد. دسترسی به شبکه را می‌توان از تنظیمات برنامه غیرفعال کرد.</string>
+    <string name="run_check_notice">در زمان اجرای بررسی، برنامه به این دامنه‌ها درخواست شبکه ارسال می‌کند:\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ip.mail.ru\n• api4.ipify.org\n• api6.ipify.org\n• 2ip.ru\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\nاگر در تنظیمات یک DNS resolver سفارشی انتخاب شده باشد، برنامه همچنین به آدرس‌های IP آن یا دامنه DoH متصل می‌شود.\n\nاگر CDN pulling فعال باشد، برنامه علاوه بر این به redirector.googlevideo.com و نیز rutracker.org و meduza.io درخواست HTTPS می‌فرستد تا ببیند این endpointها چه IP عمومی و داده‌های trace برمی‌گردانند.\n\nاگر Debug diagnostics فعال باشد، برنامه می‌تواند از آخرین بررسی تکمیل‌شده یک گزارش تشخیصی قابل کپی بسازد، حتی اگر بررسی با موفقیت تمام شده باشد. این گزارش فقط تا زمان کپی شدن در حافظه نگه داشته می‌شود و پاسخ‌های CDN pulling را هم شامل می‌شود.\n\nبا لمس دکمه «اجرای بررسی»، موافقت می‌کنید که این درخواست‌های شبکه از دستگاه شما ارسال شوند.\n\nبرنامه لاگ این درخواست‌ها را نگه نمی‌دارد. دسترسی به شبکه را می‌توان از تنظیمات برنامه غیرفعال کرد.</string>
 
     <string name="settings_title">تنظیمات</string>
     <string name="settings_section_checks">بررسی‌ها</string>
@@ -11,7 +11,7 @@
     <string name="settings_split_tunnel">Split tunnel bypass</string>
     <string name="settings_split_tunnel_desc">اسکن پورت زمان زیادی می‌گیرد</string>
     <string name="settings_tun_probe_debug">Debug diagnostics</string>
-    <string name="settings_tun_probe_debug_desc">یک گزارش تشخیصی از آخرین بررسی تکمیل‌شده را فقط در حافظه نگه می‌دارد و دکمه Copy diagnostics را در صفحه اصلی فعال می‌کند.</string>
+    <string name="settings_tun_probe_debug_desc">گزارش تشخیصی آخرین بررسی تکمیل‌شده، از جمله پاسخ‌های CDN pulling، را فقط در حافظه نگه می‌دارد و دکمه Copy diagnostics را در صفحه اصلی فعال می‌کند.</string>
     <string name="settings_tun_probe_mode_title">روش TUN probe</string>
     <string name="settings_tun_probe_mode_desc">روش TUN public-IP probe را که در بررسی‌های split tunnel استفاده می‌شود تغییر می‌دهد.</string>
     <string name="settings_tun_probe_mode_auto">Auto</string>
@@ -29,10 +29,15 @@
     <string name="settings_port_full">کامل</string>
     <string name="settings_port_custom">سفارشی</string>
     <string name="settings_network_requests">درخواست‌های شبکه</string>
-    <string name="settings_network_requests_desc">GeoIP، مقایسه IP، BeaconDB</string>
+    <string name="settings_network_requests_desc">GeoIP، مقایسه IP، CDN pulling، BeaconDB</string>
     <string name="settings_network_disable_title">درخواست‌های شبکه غیرفعال شوند؟</string>
-    <string name="settings_network_disable_message">در صورت غیرفعال شدن:\n\n• بررسی‌های GeoIP اجرا نخواهند شد\n• مقایسه IP از طریق سرویس‌های خارجی غیرفعال می‌شود\n• مکان‌یابی از طریق BeaconDB (دکل‌ها/Wi-Fi) غیرفعال می‌شود\n\nفقط بررسی‌های محلی باقی می‌مانند: نشانه‌های مستقیم، نشانه‌های غیرمستقیم و اسکن پورت</string>
+    <string name="settings_network_disable_message">در صورت غیرفعال شدن:\n\n• بررسی‌های GeoIP اجرا نخواهند شد\n• مقایسه IP از طریق سرویس‌های خارجی غیرفعال می‌شود\n• بررسی CDN pulling غیرفعال می‌شود\n• مکان‌یابی از طریق BeaconDB (دکل‌ها/Wi-Fi) غیرفعال می‌شود\n• بررسی نشت call transport غیرفعال می‌شود\n\nفقط بررسی‌های محلی باقی می‌مانند: نشانه‌های مستقیم، نشانه‌های غیرمستقیم و اسکن پورت</string>
     <string name="settings_network_disable_confirm">غیرفعال کردن</string>
+    <string name="settings_cdn_pulling">CDN pulling</string>
+    <string name="settings_cdn_pulling_desc">درخواست HTTPS به Google/YouTube redirector و Cloudflare trace endpoints می‌فرستد.</string>
+    <string name="settings_cdn_pulling_warning_title">CDN pulling فعال شود؟</string>
+    <string name="settings_cdn_pulling_warning_message">برنامه درخواست‌های معمول وب را به Google/YouTube، rutracker.org و meduza.io می‌فرستد. این سایت‌ها می‌توانند IP عمومی دستگاه شما را ببینند و داده‌های کوتاه شبکه مثل کشور، دیتاسنتر یا حالت پروکسی را برگردانند.</string>
+    <string name="settings_cdn_pulling_warning_confirm">فعال کردن</string>
     <string name="settings_call_transport_probe">نشت‌های call transport</string>
     <string name="settings_call_transport_probe_desc">درخواست‌های اضافی UDP/STUN به هدف‌های داخلی Telegram می‌فرستد. ردیابی WhatsApp فقط در buildهای debug یا experimental اجرا می‌شود.</string>
     <string name="settings_dns_resolver">DNS resolver</string>
@@ -75,6 +80,7 @@
     <string name="main_run_check">اجرای بررسی</string>
     <string name="main_stop_check">توقف</string>
     <string name="main_card_ip_comparison">مقایسه IP</string>
+    <string name="main_card_cdn_pulling">CDN pulling</string>
     <string name="main_card_direct_signs">نشانه‌های مستقیم</string>
     <string name="main_card_indirect_signs">نشانه‌های غیرمستقیم</string>
     <string name="main_card_location_signals">نشانه‌های مکان</string>
@@ -100,6 +106,7 @@
 
     <string name="main_loading_geo_ip">در حال بررسی کشور، ASN و نشانه‌های میزبانی.</string>
     <string name="main_loading_ip_comparison">در حال مقایسه IP عمومی از طریق چند سرویس مستقل.</string>
+    <string name="main_loading_cdn_pulling">در حال بررسی اینکه endpointهای مسدود یا CDN-backed چه داده‌ای درباره شبکه شما برمی‌گردانند.</string>
     <string name="main_loading_direct">در حال جست‌وجوی نشانه‌های مستقیم VPN، proxy و کلاینت‌های نصب‌شده.</string>
     <string name="main_loading_indirect">در حال بررسی اینترفیس‌ها، DNS، مسیرها و نشانه‌های فنی محلی.</string>
     <string name="main_loading_location">در حال جمع‌آوری نشانه‌های اپراتور، دکل و Wi-Fiهای نزدیک.</string>
@@ -244,6 +251,13 @@
     <string name="checker_ip_comp_different_ips">سرویس‌ها IPهای متفاوتی برگرداندند: %1$s</string>
     <string name="checker_ip_comp_all_same">همه سرویس‌های پاسخ‌داده در این گروه IP %1$s را برگرداندند</string>
     <string name="checker_ip_comp_ipv6_ignored_suffix">؛ خطاهای IPv6 نادیده گرفته شد: %1$d</string>
+
+    <string name="checker_cdn_pulling_summary_error">هیچ‌یک از هدف‌های CDN داده قابل استفاده برنگرداند</string>
+    <string name="checker_cdn_pulling_summary_mixed_ips">هدف‌های مختلف CDN IPهای متفاوتی نشان دادند: %1$s</string>
+    <string name="checker_cdn_pulling_summary_detected_full">همه هدف‌های CDN یک IP یکسان را نشان دادند: %1$s</string>
+    <string name="checker_cdn_pulling_summary_detected_partial">%2$d از %3$d هدف CDN پاسخ دادند و IP %1$s را نشان دادند</string>
+    <string name="checker_cdn_pulling_summary_detected_no_ip">%1$d از %2$d هدف CDN داده trace برگرداندند، اما همه پاسخ‌ها IP نداشتند</string>
+    <string name="checker_cdn_pulling_error_unrecognized">فرمت پاسخ شناخته نشد</string>
 
     <string name="checker_direct_category_name">نشانه‌های مستقیم</string>
     <string name="checker_direct_no_active_network">هیچ شبکه فعالی پیدا نشد</string>

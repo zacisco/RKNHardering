@@ -1,7 +1,7 @@
 <resources>
     <string name="app_name">RKNHardering</string>
     <string name="github_repo_url">https://github.com/xtclovver/RKNHardering</string>
-    <string name="run_check_notice">Во время проверки приложение выполнит сетевые запросы к доменам:\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ip.mail.ru\n• api4.ipify.org\n• api6.ipify.org\n• 2ip.ru\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\nЕсли в настройках выбран кастомный DNS-резолвер, приложение также будет обращаться к его IP-адресам или DoH-домену.\n\nЕсли включена отладочная диагностика, приложение сможет сформировать копируемый диагностический отчёт по последней завершённой проверке, даже если она прошла успешно. Отчёт хранится только в памяти, пока вы его не скопируете.\n\nНажимая кнопку «Запустить проверку», вы соглашаетесь, что с вашего устройства будут выполнены эти сетевые запросы.\n\nПриложение не ведет логи этих запросов. Доступ к сети можно будет отключить в настройках приложения.</string>
+    <string name="run_check_notice">Во время проверки приложение выполнит сетевые запросы к доменам:\n• api.beacondb.net\n• api.ipapi.is\n• www.iplocate.io\n• ip.mail.ru\n• api4.ipify.org\n• api6.ipify.org\n• 2ip.ru\n• ifconfig.me\n• ipv4.ifconfig.me\n• ipv6.ifconfig.me\n• checkip.amazonaws.com\n• api.ipify.org\n• api-ipv4.ip.sb\n• api-ipv6.ip.sb\n\nЕсли в настройках выбран кастомный DNS-резолвер, приложение также будет обращаться к его IP-адресам или DoH-домену.\n\nЕсли включён CDN pulling, приложение дополнительно отправит HTTPS-запросы к redirector.googlevideo.com, rutracker.org и meduza.io, чтобы проверить, какой внешний IP и trace-данные эти точки вернут.\n\nЕсли включена проверка утечек call transport, приложение дополнительно отправит UDP/STUN-запросы к встроенным Telegram-целям. Цели WhatsApp используются только в debug или experimental сборках.\n\nЕсли включена отладочная диагностика, приложение сможет сформировать копируемый диагностический отчёт по последней завершённой проверке, даже если она прошла успешно. Отчёт хранится только в памяти, пока вы его не скопируете. Ответы CDN pulling тоже попадут в этот отчёт.\n\nНажимая кнопку «Запустить проверку», вы соглашаетесь, что с вашего устройства будут выполнены эти сетевые запросы.\n\nПриложение не ведет логи этих запросов. Доступ к сети можно будет отключить в настройках приложения.</string>
 
     <string name="settings_title">Настройки</string>
     <string name="settings_section_checks">Проверки</string>
@@ -11,7 +11,7 @@
     <string name="settings_split_tunnel">Split tunnel bypass</string>
     <string name="settings_split_tunnel_desc">Сканирование портов занимает много времени</string>
     <string name="settings_tun_probe_debug">Отладочная диагностика</string>
-    <string name="settings_tun_probe_debug_desc">Хранит в памяти диагностическую сводку последней завершённой проверки и включает кнопку копирования на главном экране.</string>
+    <string name="settings_tun_probe_debug_desc">Хранит в памяти диагностическую сводку последней завершённой проверки, включая ответы CDN pulling, и включает кнопку копирования на главном экране.</string>
     <string name="settings_tun_probe_mode_title">Метод TUN probe</string>
     <string name="settings_tun_probe_mode_desc">Переопределяет метод TUN public-IP probe, используемый в проверках split tunnel.</string>
     <string name="settings_tun_probe_mode_auto">Auto</string>
@@ -29,10 +29,15 @@
     <string name="settings_port_full">Полный</string>
     <string name="settings_port_custom">Кастомный</string>
     <string name="settings_network_requests">Сетевые запросы</string>
-    <string name="settings_network_requests_desc">GeoIP, IP сравнение, BeaconDB</string>
+    <string name="settings_network_requests_desc">GeoIP, IP сравнение, CDN pulling, BeaconDB</string>
     <string name="settings_network_disable_title">Отключить сетевые запросы?</string>
-    <string name="settings_network_disable_message">При отключении:\n\n• GeoIP проверка не будет выполнена\n• Сравнение IP-адресов через внешние сервисы отключится\n• Геолокация через BeaconDB (вышки/Wi-Fi) отключится\n\nБудут работать только локальные проверки: прямые признаки, косвенные признаки, сканирование портов</string>
+    <string name="settings_network_disable_message">При отключении:\n\n• GeoIP проверка не будет выполнена\n• Сравнение IP-адресов через внешние сервисы отключится\n• Проверка CDN pulling отключится\n• Геолокация через BeaconDB (вышки/Wi-Fi) отключится\n• Проверка утечек call transport отключится\n\nБудут работать только локальные проверки: прямые признаки, косвенные признаки, сканирование портов</string>
     <string name="settings_network_disable_confirm">Отключить</string>
+    <string name="settings_cdn_pulling">CDN pulling</string>
+    <string name="settings_cdn_pulling_desc">Отправляет HTTPS-запросы к Google/YouTube redirector и Cloudflare trace endpoints.</string>
+    <string name="settings_cdn_pulling_warning_title">Включить CDN pulling?</string>
+    <string name="settings_cdn_pulling_warning_message">Приложение отправит обычные веб-запросы на Google/YouTube, rutracker.org и meduza.io. Эти сайты смогут увидеть внешний IP вашего устройства и вернуть короткие сетевые данные вроде страны, дата-центра или режима прокси.</string>
+    <string name="settings_cdn_pulling_warning_confirm">Включить</string>
     <string name="settings_call_transport_probe">Утечки call transport</string>
     <string name="settings_call_transport_probe_desc">Отправляет дополнительные UDP/STUN-запросы к встроенным Telegram-целям. Трассировка WhatsApp работает только в debug или experimental сборках.</string>
     <string name="settings_dns_resolver">DNS-резолвер</string>
@@ -75,6 +80,7 @@
     <string name="main_run_check">Запустить проверку</string>
     <string name="main_stop_check">Остановить</string>
     <string name="main_card_ip_comparison">Сравнение IP</string>
+    <string name="main_card_cdn_pulling">CDN pulling</string>
     <string name="main_card_direct_signs">Прямые признаки</string>
     <string name="main_card_indirect_signs">Косвенные признаки</string>
     <string name="main_card_location_signals">Сигналы местоположения</string>
@@ -100,6 +106,7 @@
 
     <string name="main_loading_geo_ip">Сверяем страну, ASN и признаки хостинга.</string>
     <string name="main_loading_ip_comparison">Сравниваем внешний IP через несколько независимых сервисов.</string>
+    <string name="main_loading_cdn_pulling">Проверяем, какие сетевые данные вернут заблокированные или CDN-backed endpoints.</string>
     <string name="main_loading_direct">Ищем прямые признаки VPN, прокси и установленных клиентов.</string>
     <string name="main_loading_indirect">Проверяем интерфейсы, DNS, маршруты и локальные технические сигналы.</string>
     <string name="main_loading_location">Собираем сигналы оператора, вышек и ближайших Wi-Fi точек.</string>
@@ -255,6 +262,14 @@
     <string name="checker_ip_comp_different_ips">Сервисы вернули разные IP: %1$s</string>
     <string name="checker_ip_comp_all_same">Все ответившие сервисы группы вернули IP %1$s</string>
     <string name="checker_ip_comp_ipv6_ignored_suffix">; IPv6-ошибки проигнорированы: %1$d</string>
+
+    <!-- CdnPullingChecker -->
+    <string name="checker_cdn_pulling_summary_error">Ни одна CDN-цель не вернула пригодные данные</string>
+    <string name="checker_cdn_pulling_summary_mixed_ips">Разные CDN-цели показали разные IP: %1$s</string>
+    <string name="checker_cdn_pulling_summary_detected_full">Все CDN-цели показали один и тот же IP: %1$s</string>
+    <string name="checker_cdn_pulling_summary_detected_partial">%2$d из %3$d CDN-целей ответили и показали IP %1$s</string>
+    <string name="checker_cdn_pulling_summary_detected_no_ip">%1$d из %2$d CDN-целей вернули trace-данные, но не во всех ответах был IP</string>
+    <string name="checker_cdn_pulling_error_unrecognized">Формат ответа не распознан</string>
 
     <!-- DirectSignsChecker -->
     <string name="checker_direct_category_name">Прямые признаки</string>

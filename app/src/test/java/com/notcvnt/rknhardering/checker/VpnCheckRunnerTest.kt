@@ -9,6 +9,8 @@ import com.notcvnt.rknhardering.model.CallTransportProbeKind
 import com.notcvnt.rknhardering.model.CallTransportService
 import com.notcvnt.rknhardering.model.CallTransportStatus
 import com.notcvnt.rknhardering.model.BypassResult
+import com.notcvnt.rknhardering.model.CdnPullingResponse
+import com.notcvnt.rknhardering.model.CdnPullingResult
 import com.notcvnt.rknhardering.model.CategoryResult
 import com.notcvnt.rknhardering.model.EvidenceConfidence
 import com.notcvnt.rknhardering.model.EvidenceItem
@@ -224,6 +226,92 @@ class VpnCheckRunnerTest {
 
         assertTrue(indirectThread != null)
         assertTrue(indirectThread !== callerThread)
+    }
+
+    @Test
+    fun `cdn pulling runs only when enabled and emits update`() = runBlocking {
+        val updates = mutableListOf<CheckUpdate>()
+        var cdnCalls = 0
+
+        VpnCheckRunner.dependenciesOverride = VpnCheckRunner.Dependencies(
+            geoIpCheck = { _, _ -> category("geo") },
+            ipComparisonCheck = { _, _ -> emptyIpComparison() },
+            cdnPullingCheck = { _, _ ->
+                cdnCalls += 1
+                CdnPullingResult(
+                    detected = true,
+                    summary = "All CDN targets exposed 203.0.113.64",
+                    responses = listOf(
+                        CdnPullingResponse(
+                            targetLabel = "rutracker.org",
+                            url = "https://rutracker.org/cdn-cgi/trace",
+                            ip = "203.0.113.64",
+                            importantFields = linkedMapOf("IP" to "203.0.113.64", "LOC" to "FI"),
+                            rawBody = "ip=203.0.113.64\nloc=FI",
+                        ),
+                    ),
+                )
+            },
+            directCheck = { _, _ -> category("direct") },
+            indirectCheck = { _, _, _, _ -> category("indirect") },
+            locationCheck = { _, _, _ -> category("location") },
+            bypassCheck = { _, _, _, _, _, _, _, _, _, _ ->
+                error("BypassChecker should not run when split tunnel is disabled")
+            },
+        )
+
+        val result = VpnCheckRunner.run(
+            context = context,
+            settings = CheckSettings(
+                splitTunnelEnabled = false,
+                networkRequestsEnabled = true,
+                cdnPullingEnabled = true,
+                resolverConfig = DnsResolverConfig.system(),
+            ),
+        ) { update ->
+            updates += update
+        }
+
+        assertEquals(1, cdnCalls)
+        assertTrue(result.cdnPulling.detected)
+        assertTrue(updates.any { it is CheckUpdate.CdnPullingReady })
+    }
+
+    @Test
+    fun `cdn pulling stays disabled when toggle is off`() = runBlocking {
+        val updates = mutableListOf<CheckUpdate>()
+        var cdnCalls = 0
+
+        VpnCheckRunner.dependenciesOverride = VpnCheckRunner.Dependencies(
+            geoIpCheck = { _, _ -> category("geo") },
+            ipComparisonCheck = { _, _ -> emptyIpComparison() },
+            cdnPullingCheck = { _, _ ->
+                cdnCalls += 1
+                error("CDN pulling should not run when disabled")
+            },
+            directCheck = { _, _ -> category("direct") },
+            indirectCheck = { _, _, _, _ -> category("indirect") },
+            locationCheck = { _, _, _ -> category("location") },
+            bypassCheck = { _, _, _, _, _, _, _, _, _, _ ->
+                error("BypassChecker should not run when split tunnel is disabled")
+            },
+        )
+
+        val result = VpnCheckRunner.run(
+            context = context,
+            settings = CheckSettings(
+                splitTunnelEnabled = false,
+                networkRequestsEnabled = true,
+                cdnPullingEnabled = false,
+                resolverConfig = DnsResolverConfig.system(),
+            ),
+        ) { update ->
+            updates += update
+        }
+
+        assertEquals(0, cdnCalls)
+        assertEquals(CdnPullingResult.empty(), result.cdnPulling)
+        assertTrue(updates.none { it is CheckUpdate.CdnPullingReady })
     }
 
     private fun category(

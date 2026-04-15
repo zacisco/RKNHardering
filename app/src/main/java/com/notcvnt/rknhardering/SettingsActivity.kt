@@ -2,7 +2,12 @@ package com.notcvnt.rknhardering
 
 import android.content.Intent
 import android.content.SharedPreferences
+import android.graphics.Typeface
 import android.os.Bundle
+import android.text.SpannableStringBuilder
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
+import android.text.style.StyleSpan
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -11,6 +16,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.core.net.toUri
 import androidx.core.widget.doAfterTextChanged
@@ -28,6 +34,30 @@ import com.notcvnt.rknhardering.probe.PortScanPlanner
 import com.notcvnt.rknhardering.probe.TunProbeModeOverride
 import java.text.NumberFormat
 import java.util.Locale
+
+internal fun buildCdnPullingWarningMessage(context: android.content.Context): CharSequence {
+    val message = SpannableStringBuilder(
+        context.getString(R.string.settings_cdn_pulling_warning_message),
+    )
+    val meduzaDomain = "meduza.io"
+    val start = message.indexOf(meduzaDomain)
+    if (start >= 0) {
+        val end = start + meduzaDomain.length
+        message.setSpan(
+            ForegroundColorSpan(ContextCompat.getColor(context, R.color.status_red)),
+            start,
+            end,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+        )
+        message.setSpan(
+            StyleSpan(Typeface.BOLD),
+            start,
+            end,
+            Spanned.SPAN_EXCLUSIVE_EXCLUSIVE,
+        )
+    }
+    return message
+}
 
 class SettingsActivity : AppCompatActivity() {
 
@@ -48,6 +78,8 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var editPortEnd: TextInputEditText
     private lateinit var textPortRangePreview: TextView
     private lateinit var switchNetworkRequests: MaterialSwitch
+    private lateinit var cardCdnPulling: MaterialCardView
+    private lateinit var switchCdnPulling: MaterialSwitch
     private lateinit var cardCallTransportProbe: MaterialCardView
     private lateinit var switchCallTransportProbe: MaterialSwitch
     private lateinit var cardResolver: MaterialCardView
@@ -63,6 +95,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var switchPrivacyMode: MaterialSwitch
     private lateinit var chipGroupTheme: ChipGroup
     private lateinit var chipGroupLanguage: ChipGroup
+    private var suppressCdnPullingToggleCallback = false
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putInt(STATE_SCROLL_POSITION, scrollView.verticalScrollbarPosition)
@@ -106,6 +139,8 @@ class SettingsActivity : AppCompatActivity() {
         editPortEnd = findViewById(R.id.editPortEnd)
         textPortRangePreview = findViewById(R.id.textPortRangePreview)
         switchNetworkRequests = findViewById(R.id.switchNetworkRequests)
+        cardCdnPulling = findViewById(R.id.cardCdnPulling)
+        switchCdnPulling = findViewById(R.id.switchCdnPulling)
         cardCallTransportProbe = findViewById(R.id.cardCallTransportProbe)
         switchCallTransportProbe = findViewById(R.id.switchCallTransportProbe)
         cardResolver = findViewById(R.id.cardResolver)
@@ -129,12 +164,14 @@ class SettingsActivity : AppCompatActivity() {
         switchProxyScan.isChecked = prefs.getBoolean(PREF_PROXY_SCAN_ENABLED, true)
         switchXrayApiScan.isChecked = prefs.getBoolean(PREF_XRAY_API_SCAN_ENABLED, true)
         switchNetworkRequests.isChecked = prefs.getBoolean(PREF_NETWORK_REQUESTS_ENABLED, true)
+        switchCdnPulling.isChecked = prefs.getBoolean(PREF_CDN_PULLING_ENABLED, false)
         switchCallTransportProbe.isChecked = prefs.getBoolean(PREF_CALL_TRANSPORT_PROBE_ENABLED, false)
         switchPrivacyMode.isChecked = prefs.getBoolean(PREF_PRIVACY_MODE, false)
 
         updateLocalScanTogglesEnabled(switchSplitTunnel.isChecked)
         updateTunProbeModeEnabled(switchSplitTunnel.isChecked)
         updatePortRangeEnabled(switchSplitTunnel.isChecked && isAnyLocalScanEnabled())
+        updateCdnPullingEnabled(switchNetworkRequests.isChecked)
         updateCallTransportEnabled(switchNetworkRequests.isChecked)
         loadTunProbeSettings()
 
@@ -199,6 +236,7 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         switchNetworkRequests.setOnCheckedChangeListener { _, isChecked ->
+            updateCdnPullingEnabled(isChecked)
             updateCallTransportEnabled(isChecked)
             if (!isChecked) {
                 AlertDialog.Builder(this)
@@ -216,6 +254,15 @@ class SettingsActivity : AppCompatActivity() {
                     .show()
             } else {
                 prefs.edit { putBoolean(PREF_NETWORK_REQUESTS_ENABLED, true) }
+            }
+        }
+
+        switchCdnPulling.setOnCheckedChangeListener { _, isChecked ->
+            if (suppressCdnPullingToggleCallback) return@setOnCheckedChangeListener
+            if (isChecked) {
+                showCdnPullingWarning()
+            } else {
+                prefs.edit { putBoolean(PREF_CDN_PULLING_ENABLED, false) }
             }
         }
 
@@ -336,6 +383,33 @@ class SettingsActivity : AppCompatActivity() {
     private fun updateCallTransportEnabled(enabled: Boolean) {
         cardCallTransportProbe.alpha = if (enabled) 1.0f else 0.5f
         setViewAndChildrenEnabled(cardCallTransportProbe, enabled)
+    }
+
+    private fun updateCdnPullingEnabled(enabled: Boolean) {
+        cardCdnPulling.alpha = if (enabled) 1.0f else 0.5f
+        setViewAndChildrenEnabled(cardCdnPulling, enabled)
+    }
+
+    private fun showCdnPullingWarning() {
+        AlertDialog.Builder(this)
+            .setTitle(R.string.settings_cdn_pulling_warning_title)
+            .setMessage(buildCdnPullingWarningMessage(this))
+            .setPositiveButton(R.string.settings_cdn_pulling_warning_confirm) { _, _ ->
+                prefs.edit { putBoolean(PREF_CDN_PULLING_ENABLED, true) }
+            }
+            .setNegativeButton(android.R.string.cancel) { _, _ ->
+                setCdnPullingSwitch(false)
+            }
+            .setOnCancelListener {
+                setCdnPullingSwitch(false)
+            }
+            .show()
+    }
+
+    private fun setCdnPullingSwitch(checked: Boolean) {
+        suppressCdnPullingToggleCallback = true
+        switchCdnPulling.isChecked = checked
+        suppressCdnPullingToggleCallback = false
     }
 
     private fun setViewAndChildrenEnabled(view: View, enabled: Boolean) {
@@ -564,6 +638,7 @@ class SettingsActivity : AppCompatActivity() {
         const val PREF_PORT_RANGE_START = "pref_port_range_start"
         const val PREF_PORT_RANGE_END = "pref_port_range_end"
         const val PREF_NETWORK_REQUESTS_ENABLED = "pref_network_requests_enabled"
+        const val PREF_CDN_PULLING_ENABLED = "pref_cdn_pulling_enabled"
         const val PREF_CALL_TRANSPORT_PROBE_ENABLED = "pref_call_transport_probe_enabled"
         const val PREF_TUN_PROBE_DEBUG_ENABLED = "pref_tun_probe_debug_enabled"
         const val PREF_TUN_PROBE_MODE_OVERRIDE = "pref_tun_probe_mode_override"
