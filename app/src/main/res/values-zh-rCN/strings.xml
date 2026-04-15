@@ -22,7 +22,6 @@
     <string name="settings_xray_api_scan_title">Xray gRPC API 扫描</string>
     <string name="settings_xray_api_scan_desc">扫描 localhost 上暴露的 Xray gRPC API 端口。</string>
     <string name="settings_port_range">端口范围</string>
-    <string name="settings_port_range_desc">用于 Split tunnel 扫描</string>
     <string name="settings_port_range_desc_scans">供已启用的本地代理和 Xray 扫描使用。</string>
     <string name="settings_port_popular">常用</string>
     <string name="settings_port_extended">扩展</string>
@@ -83,6 +82,14 @@
     <string name="main_card_cdn_pulling">CDN pulling</string>
     <string name="main_card_direct_signs">直接迹象</string>
     <string name="main_card_indirect_signs">间接迹象</string>
+    <string name="main_card_call_transport">STUN 服务器</string>
+    <string name="main_card_call_transport_status_no_signal">无信号</string>
+    <string name="main_card_call_transport_status_needs_review">需要检查</string>
+    <string name="main_card_call_transport_status_unsupported">不支持</string>
+    <string name="main_card_call_transport_status_error">错误</string>
+    <string name="main_card_call_transport_path_active">活跃网络</string>
+    <string name="main_card_call_transport_path_underlying">底层网络</string>
+    <string name="main_card_call_transport_path_proxy">本地代理</string>
     <string name="main_card_location_signals">位置迹象</string>
     <string name="main_verdict_details">详情</string>
 
@@ -289,7 +296,6 @@
     <string name="checker_indirect_vpn_interface_found">发现 VPN 接口：%1$s</string>
     <string name="checker_indirect_interface_error">检查接口时出错：%1$s</string>
     <string name="checker_indirect_mtu_anomaly">MTU 异常：%1$s MTU=%2$d（&lt; 1500）</string>
-    <string name="checker_indirect_mtu_anomaly_nonstandard">MTU 异常：非标准接口 %1$s MTU=%2$d</string>
     <string name="checker_indirect_mtu_no_anomalies">MTU：未发现异常</string>
     <string name="checker_indirect_mtu_error">检查 MTU 时出错：%1$s</string>
     <string name="checker_indirect_ipsec_classification">IPsec 网络 %1$s：%2$s</string>

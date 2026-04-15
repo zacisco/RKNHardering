@@ -22,7 +22,6 @@
     <string name="settings_xray_api_scan_title">Скан Xray gRPC API</string>
     <string name="settings_xray_api_scan_desc">Проверяет localhost на открытые порты Xray gRPC API.</string>
     <string name="settings_port_range">Диапазон портов</string>
-    <string name="settings_port_range_desc">Для сканирования Split tunnel</string>
     <string name="settings_port_range_desc_scans">Используется для включённых localhost-сканов proxy и Xray.</string>
     <string name="settings_port_popular">Популярные</string>
     <string name="settings_port_extended">Расширенный</string>
@@ -83,6 +82,14 @@
     <string name="main_card_cdn_pulling">CDN pulling</string>
     <string name="main_card_direct_signs">Прямые признаки</string>
     <string name="main_card_indirect_signs">Косвенные признаки</string>
+    <string name="main_card_call_transport">STUN-серверы</string>
+    <string name="main_card_call_transport_status_no_signal">Нет сигнала</string>
+    <string name="main_card_call_transport_status_needs_review">Требует проверки</string>
+    <string name="main_card_call_transport_status_unsupported">Не поддерживается</string>
+    <string name="main_card_call_transport_status_error">Ошибка</string>
+    <string name="main_card_call_transport_path_active">Активная сеть</string>
+    <string name="main_card_call_transport_path_underlying">Базовая сеть</string>
+    <string name="main_card_call_transport_path_proxy">Локальный прокси</string>
     <string name="main_card_location_signals">Сигналы местоположения</string>
     <string name="main_verdict_details">Подробнее</string>
 
@@ -304,7 +311,6 @@
     <string name="checker_indirect_vpn_interface_found">VPN-интерфейс обнаружен: %1$s</string>
     <string name="checker_indirect_interface_error">Ошибка при проверке интерфейсов: %1$s</string>
     <string name="checker_indirect_mtu_anomaly">MTU аномалия: %1$s MTU=%2$d (&lt; 1500)</string>
-    <string name="checker_indirect_mtu_anomaly_nonstandard">MTU аномалия: нестандартный интерфейс %1$s MTU=%2$d</string>
     <string name="checker_indirect_mtu_no_anomalies">MTU: аномалий не обнаружено</string>
     <string name="checker_indirect_mtu_error">Ошибка при проверке MTU: %1$s</string>
     <string name="checker_indirect_ipsec_classification">IPsec-сеть %1$s: %2$s</string>
@@ -377,9 +383,11 @@
     <string name="checker_bypass_vpn_network_binding">VPN network binding: приложение видит и VPN Network, и non-VPN default сеть (VPN IP: %1$s, direct IP: %2$s)</string>
     <string name="checker_bypass_tun_probe_success">TUN активный зонд: запрос через VPN Network вернул IP %1$s (TUN — живой маршрутизируемый интерфейс)</string>
     <string name="checker_bypass_tun_probe_success_transport_only">TUN активный зонд: curl-compatible transport-only путь вернул IP %1$s (SO_BINDTODEVICE + системный DNS)</string>
+    <string name="checker_bypass_tun_probe_success_curl_compatible">TUN активный зонд: curl-compatible путь вернул IP %1$s</string>
     <string name="checker_bypass_tun_probe_failure">TUN активный зонд: запрос через VPN Network недоступен (интерфейс заблокирован или filtered)</string>
     <string name="checker_bypass_tun_probe_failure_reason">TUN активный зонд: запрос через VPN Network завершился ошибкой (%1$s)</string>
     <string name="checker_bypass_tun_probe_dns_mismatch">TUN активный зонд: strict same-path завершился ошибкой (%1$s), но curl-compatible transport-only путь сработал; вероятен mismatch DNS-path</string>
+    <string name="checker_bypass_tun_probe_dns_mismatch_curl_compatible">TUN активный зонд: strict same-path завершился ошибкой (%1$s), но curl-compatible путь сработал; вероятен mismatch DNS-path</string>
     <string name="checker_bypass_default_non_vpn_ip">Default non-VPN IP: %1$s</string>
     <string name="checker_bypass_underlying_unreachable">Underlying network: non-VPN сеть недоступна (full tunnel)</string>
     <string name="checker_bypass_underlying_unreachable_reason">Underlying network: non-VPN сеть недоступна (%1$s)</string>
@@ -388,6 +396,7 @@
     <string name="checker_bypass_compare_family_mismatch">Сравнение split tunnel вернуло адреса разных семейств (VPN IP: %1$s, non-VPN IP: %2$s): нужна ручная проверка</string>
     <string name="checker_bypass_compare_incomplete">Сравнение split tunnel неполное (VPN IP: %1$s, non-VPN IP: %2$s): нужна ручная проверка</string>
     <string name="checker_bypass_transport_only_used">Сравнение split tunnel опиралось на curl-compatible transport-only fallback для: %1$s</string>
+    <string name="checker_bypass_curl_compatible_used">Сравнение split tunnel опиралось на curl-compatible fallback для: %1$s</string>
     <string name="checker_bypass_transport_only_vpn_path">VPN path</string>
     <string name="checker_bypass_transport_only_underlying_path">underlying path</string>
     <string name="checker_tun_probe_debug_summary">%1$s debug: effective mode %2$s, selected mode %3$s, strict %4$s, curl-compatible %5$s, dnsPathMismatch %6$s</string>

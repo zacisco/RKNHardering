@@ -22,7 +22,6 @@
     <string name="settings_xray_api_scan_title">اسکن API gRPC Xray</string>
     <string name="settings_xray_api_scan_desc">localhost را برای پورت‌های آشکار API gRPC Xray اسکن می‌کند.</string>
     <string name="settings_port_range">بازه پورت</string>
-    <string name="settings_port_range_desc">برای اسکن Split tunnel</string>
     <string name="settings_port_range_desc_scans">برای اسکن‌های فعال proxy محلی و Xray استفاده می‌شود.</string>
     <string name="settings_port_popular">رایج</string>
     <string name="settings_port_extended">گسترده</string>
@@ -83,6 +82,14 @@
     <string name="main_card_cdn_pulling">CDN pulling</string>
     <string name="main_card_direct_signs">نشانه‌های مستقیم</string>
     <string name="main_card_indirect_signs">نشانه‌های غیرمستقیم</string>
+    <string name="main_card_call_transport">سرورهای STUN</string>
+    <string name="main_card_call_transport_status_no_signal">بدون سیگنال</string>
+    <string name="main_card_call_transport_status_needs_review">نیاز به بررسی</string>
+    <string name="main_card_call_transport_status_unsupported">پشتیبانی نمی‌شود</string>
+    <string name="main_card_call_transport_status_error">خطا</string>
+    <string name="main_card_call_transport_path_active">شبکه فعال</string>
+    <string name="main_card_call_transport_path_underlying">شبکه زیرین</string>
+    <string name="main_card_call_transport_path_proxy">پروکسی محلی</string>
     <string name="main_card_location_signals">نشانه‌های مکان</string>
     <string name="main_verdict_details">جزئیات</string>
 
@@ -290,7 +297,6 @@
     <string name="checker_indirect_vpn_interface_found">اینترفیس VPN پیدا شد: %1$s</string>
     <string name="checker_indirect_interface_error">خطا هنگام بررسی اینترفیس‌ها: %1$s</string>
     <string name="checker_indirect_mtu_anomaly">ناهنجاری MTU: %1$s MTU=%2$d (&lt; 1500)</string>
-    <string name="checker_indirect_mtu_anomaly_nonstandard">ناهنجاری MTU: اینترفیس غیر استاندارد %1$s MTU=%2$d</string>
     <string name="checker_indirect_mtu_no_anomalies">MTU: ناهنجاری‌ای پیدا نشد</string>
     <string name="checker_indirect_mtu_error">خطا هنگام بررسی MTU: %1$s</string>
     <string name="checker_indirect_ipsec_classification">شبکه IPsec %1$s: %2$s</string>

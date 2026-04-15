@@ -22,7 +22,6 @@
     <string name="settings_xray_api_scan_title">Xray gRPC API scan</string>
     <string name="settings_xray_api_scan_desc">Scans localhost for exposed Xray gRPC API ports.</string>
     <string name="settings_port_range">Port range</string>
-    <string name="settings_port_range_desc">For Split tunnel scanning</string>
     <string name="settings_port_range_desc_scans">Used by enabled localhost proxy and Xray scans.</string>
     <string name="settings_port_popular">Popular</string>
     <string name="settings_port_extended">Extended</string>
@@ -84,6 +83,14 @@
     <string name="main_card_cdn_pulling">CDN pulling</string>
     <string name="main_card_direct_signs">Direct signs</string>
     <string name="main_card_indirect_signs">Indirect signs</string>
+    <string name="main_card_call_transport">STUN servers</string>
+    <string name="main_card_call_transport_status_no_signal">No signal</string>
+    <string name="main_card_call_transport_status_needs_review">Needs review</string>
+    <string name="main_card_call_transport_status_unsupported">Unsupported</string>
+    <string name="main_card_call_transport_status_error">Error</string>
+    <string name="main_card_call_transport_path_active">Active network</string>
+    <string name="main_card_call_transport_path_underlying">Underlying network</string>
+    <string name="main_card_call_transport_path_proxy">Local proxy</string>
     <string name="main_card_location_signals">Location signals</string>
     <string name="main_verdict_details">Details</string>
 
@@ -306,7 +313,6 @@
     <string name="checker_indirect_vpn_interface_found">VPN interface detected: %1$s</string>
     <string name="checker_indirect_interface_error">Error while checking interfaces: %1$s</string>
     <string name="checker_indirect_mtu_anomaly">MTU anomaly: %1$s MTU=%2$d (&lt; 1500)</string>
-    <string name="checker_indirect_mtu_anomaly_nonstandard">MTU anomaly: non-standard interface %1$s MTU=%2$d</string>
     <string name="checker_indirect_mtu_no_anomalies">MTU: no anomalies detected</string>
     <string name="checker_indirect_mtu_error">Error while checking MTU: %1$s</string>
     <string name="checker_indirect_ipsec_classification">IPsec network %1$s: %2$s</string>
@@ -377,9 +383,11 @@
     <string name="checker_bypass_vpn_network_binding">VPN network binding: the app can reach both the default non-VPN path and VPN Network (VPN IP: %1$s, default IP: %2$s)</string>
     <string name="checker_bypass_tun_probe_success">TUN active probe: a request via VPN Network returned IP %1$s (TUN is a live routable interface)</string>
     <string name="checker_bypass_tun_probe_success_transport_only">TUN active probe: a curl-compatible transport-only path returned IP %1$s (SO_BINDTODEVICE + system DNS)</string>
+    <string name="checker_bypass_tun_probe_success_curl_compatible">TUN active probe: a curl-compatible path returned IP %1$s</string>
     <string name="checker_bypass_tun_probe_failure">TUN active probe: a request via VPN Network is unavailable (the interface is blocked or filtered)</string>
     <string name="checker_bypass_tun_probe_failure_reason">TUN active probe: a request via VPN Network failed (%1$s)</string>
     <string name="checker_bypass_tun_probe_dns_mismatch">TUN active probe: strict same-path failed (%1$s), but the curl-compatible transport-only path succeeded; DNS path mismatch is likely</string>
+    <string name="checker_bypass_tun_probe_dns_mismatch_curl_compatible">TUN active probe: strict same-path failed (%1$s), but the curl-compatible path succeeded; DNS path mismatch is likely</string>
     <string name="checker_bypass_default_non_vpn_ip">Default non-VPN IP: %1$s</string>
     <string name="checker_bypass_underlying_unreachable">Underlying network: the non-VPN network is unavailable (full tunnel)</string>
     <string name="checker_bypass_underlying_unreachable_reason">Underlying network: the non-VPN network is unavailable (%1$s)</string>
@@ -388,6 +396,7 @@
     <string name="checker_bypass_compare_family_mismatch">Split tunnel comparison returned different IP families (VPN IP: %1$s, non-VPN IP: %2$s): manual review is needed</string>
     <string name="checker_bypass_compare_incomplete">Split tunnel comparison is incomplete (VPN IP: %1$s, non-VPN IP: %2$s): manual review is needed</string>
     <string name="checker_bypass_transport_only_used">Split tunnel comparison used a curl-compatible transport-only fallback for: %1$s</string>
+    <string name="checker_bypass_curl_compatible_used">Split tunnel comparison used a curl-compatible fallback for: %1$s</string>
     <string name="checker_bypass_transport_only_vpn_path">VPN path</string>
     <string name="checker_bypass_transport_only_underlying_path">underlying path</string>
     <string name="checker_tun_probe_debug_summary">%1$s debug: effective mode %2$s, selected mode %3$s, strict %4$s, curl-compatible %5$s, dnsPathMismatch %6$s</string>
